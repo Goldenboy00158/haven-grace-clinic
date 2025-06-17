@@ -201,38 +201,217 @@ export const medications: Medication[] = [
     formulations: ["Tablets"],
     manufacturer: "Lupin"
   },
-  // Continue with enhanced medication data...
+  { 
+    id: "21", 
+    name: "MARA MOJA", 
+    price: 20, 
+    stock: 100, 
+    category: "Analgesic", 
+    costPrice: 12,
+    formulations: ["Tablets"],
+    manufacturer: "Cosmos"
+  },
+  // NEW MEDICATIONS ADDED
   { 
     id: "120", 
-    name: "PREGNANCY TEST STRIPS", 
+    name: "CPM TABS", 
+    price: 30, 
+    stock: 30, 
+    category: "Antihistamine", 
+    costPrice: 18,
+    formulations: ["Tablets 4mg"],
+    manufacturer: "Generic"
+  },
+  { 
+    id: "121", 
+    name: "PREGNANCY TEST", 
     price: 50, 
-    stock: 18, 
+    stock: 17, 
     category: "Diagnostics", 
-    costPrice: 8,
+    costPrice: 30,
     formulations: ["Test Strips", "Digital Test"],
     manufacturer: "Clearblue"
   },
   { 
-    id: "121", 
-    name: "MDT STRIP", 
-    price: 200, 
-    stock: 15, 
-    category: "Diagnostics", 
-    costPrice: 30,
-    formulations: ["Multi-drug Test Strip"],
-    manufacturer: "Abon"
+    id: "122", 
+    name: "GLUCOPHAGE 850 TABS", 
+    price: 100, 
+    stock: 0, 
+    category: "Antidiabetic", 
+    costPrice: 60,
+    formulations: ["Tablets 850mg"],
+    manufacturer: "Merck"
   },
   { 
-    id: "122", 
-    name: "H. PYLORI TEST KIT", 
-    price: 350, 
-    stock: 10, 
+    id: "123", 
+    name: "NOISIC", 
+    price: 10, 
+    stock: 0, 
+    category: "Analgesic", 
+    costPrice: 6,
+    formulations: ["Tablets"],
+    manufacturer: "Generic"
+  },
+  { 
+    id: "124", 
+    name: "MALARIA DIAGNOSTIC TEST", 
+    price: 200, 
+    stock: 2, 
     category: "Diagnostics", 
-    costPrice: 69,
-    formulations: ["Rapid Test Kit", "Stool Antigen Test"],
-    manufacturer: "Meridian"
+    costPrice: 120,
+    formulations: ["Rapid Test Strip"],
+    manufacturer: "SD Biosensor"
+  },
+  { 
+    id: "125", 
+    name: "SALBUTAMOL 4MG TABS", 
+    price: 30, 
+    stock: 100, 
+    category: "Bronchodilator", 
+    costPrice: 18,
+    formulations: ["Tablets 4mg"],
+    manufacturer: "GSK"
+  },
+  { 
+    id: "126", 
+    name: "SALBUTAMOL SYRUP", 
+    price: 100, 
+    stock: 6, 
+    category: "Bronchodilator", 
+    costPrice: 60,
+    formulations: ["Syrup 2mg/5ml 100ml"],
+    manufacturer: "GSK"
+  },
+  { 
+    id: "127", 
+    name: "NICOF 60ML", 
+    price: 150, 
+    stock: 1, 
+    category: "Cough Syrup", 
+    costPrice: 90,
+    formulations: ["Syrup 60ml"],
+    manufacturer: "Cipla"
+  },
+  { 
+    id: "128", 
+    name: "NICOF 100ML", 
+    price: 150, 
+    stock: 1, 
+    category: "Cough Syrup", 
+    costPrice: 90,
+    formulations: ["Syrup 100ml"],
+    manufacturer: "Cipla"
+  },
+  { 
+    id: "129", 
+    name: "KOFGON 60ML", 
+    price: 150, 
+    stock: 2, 
+    category: "Cough Syrup", 
+    costPrice: 90,
+    formulations: ["Syrup 60ml"],
+    manufacturer: "Lupin"
+  },
+  { 
+    id: "130", 
+    name: "KOFGON 100ML", 
+    price: 150, 
+    stock: 2, 
+    category: "Cough Syrup", 
+    costPrice: 90,
+    formulations: ["Syrup 100ml"],
+    manufacturer: "Lupin"
+  },
+  { 
+    id: "131", 
+    name: "BENACOFF 60ML", 
+    price: 150, 
+    stock: 2, 
+    category: "Cough Syrup", 
+    costPrice: 90,
+    formulations: ["Syrup 60ml"],
+    manufacturer: "Benaroya"
+  },
+  { 
+    id: "132", 
+    name: "BENACOFF 100ML", 
+    price: 150, 
+    stock: 2, 
+    category: "Cough Syrup", 
+    costPrice: 90,
+    formulations: ["Syrup 100ml"],
+    manufacturer: "Benaroya"
+  },
+  { 
+    id: "133", 
+    name: "TRIDEX 60ML", 
+    price: 150, 
+    stock: 4, 
+    category: "Cough Syrup", 
+    costPrice: 90,
+    formulations: ["Syrup 60ml"],
+    manufacturer: "Cadila"
+  },
+  { 
+    id: "134", 
+    name: "TRIDEX 100ML", 
+    price: 150, 
+    stock: 2, 
+    category: "Cough Syrup", 
+    costPrice: 90,
+    formulations: ["Syrup 100ml"],
+    manufacturer: "Cadila"
+  },
+  { 
+    id: "135", 
+    name: "FLEXOR CAPSULES", 
+    price: 20, 
+    stock: 50, 
+    category: "Muscle Relaxant", 
+    costPrice: 12,
+    formulations: ["Capsules"],
+    manufacturer: "Torrent"
+  },
+  { 
+    id: "136", 
+    name: "MYONAC MR", 
+    price: 30, 
+    stock: 19, 
+    category: "Muscle Relaxant", 
+    costPrice: 18,
+    formulations: ["Caplets"],
+    manufacturer: "Lupin"
+  },
+  { 
+    id: "137", 
+    name: "CELECOXIB 100MG", 
+    price: 20, 
+    stock: 59, 
+    category: "Anti-inflammatory", 
+    costPrice: 12,
+    formulations: ["Capsules 100mg"],
+    manufacturer: "Pfizer"
+  },
+  { 
+    id: "138", 
+    name: "TT", 
+    price: 200, 
+    stock: 19, 
+    category: "Vaccine", 
+    costPrice: 120,
+    formulations: ["Injection"],
+    manufacturer: "Serum Institute"
+  },
+  { 
+    id: "139", 
+    name: "CEFIXIME 400MG", 
+    price: 350, 
+    stock: 1, 
+    category: "Antibiotics", 
+    costPrice: 210,
+    formulations: ["Tablets 400mg", "Capsules 400mg"],
+    manufacturer: "Lupin"
   }
-  // Add remaining medications with similar enhancements...
 ];
 
 export const getStockStatus = (stock: number) => {

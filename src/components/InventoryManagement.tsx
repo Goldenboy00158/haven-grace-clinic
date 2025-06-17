@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Download, Plus, Minus, Package, AlertTriangle, TrendingUp, ShoppingCart, User, Users } from 'lucide-react';
+import { Search, Filter, Download, Plus, Minus, Package, AlertTriangle, TrendingUp, ShoppingCart, User, Users, Edit } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { medications, getStockStatus, getMedicationCategories } from '../data/medications';
 import { Medication, Patient, Transaction, SaleItem } from '../types';
+import EditMedicationModal from './EditMedicationModal';
 
 export default function InventoryManagement() {
   const [medicationData, setMedicationData] = useLocalStorage<Medication[]>('clinic-medications', medications);
@@ -13,6 +14,10 @@ export default function InventoryManagement() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'price' | 'stock' | 'status'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  
+  // Edit modal states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
   
   // Sale modal states
   const [showSaleModal, setShowSaleModal] = useState(false);
@@ -82,6 +87,19 @@ export default function InventoryManagement() {
     );
   };
 
+  const handleEditMedication = (medication: Medication) => {
+    setEditingMedication(medication);
+    setShowEditModal(true);
+  };
+
+  const handleSaveMedication = (updatedMedication: Medication) => {
+    setMedicationData(prev => 
+      prev.map(med => 
+        med.id === updatedMedication.id ? updatedMedication : med
+      )
+    );
+  };
+
   const addToSale = (medication: Medication) => {
     if (medication.stock === 0) return;
     
@@ -130,6 +148,8 @@ export default function InventoryManagement() {
         medicationName: item.medicationName,
         quantity: item.quantity,
         dosage: '',
+        frequency: '',
+        duration: 0,
         instructions: '',
         price: item.price,
         totalCost: item.totalCost
@@ -346,13 +366,22 @@ export default function InventoryManagement() {
                     </td>
                     <td className="py-4 px-6 text-gray-700 font-semibold">{totalValue.toFixed(2)}</td>
                     <td className="py-4 px-6">
-                      <button 
-                        onClick={() => addToSale(medication)}
-                        disabled={medication.stock === 0}
-                        className="bg-green-100 hover:bg-green-200 text-green-600 px-3 py-1 rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Add to Sale
-                      </button>
+                      <div className="flex space-x-2">
+                        <button 
+                          onClick={() => handleEditMedication(medication)}
+                          className="bg-blue-100 hover:bg-blue-200 text-blue-600 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center space-x-1"
+                        >
+                          <Edit className="h-3 w-3" />
+                          <span>Edit</span>
+                        </button>
+                        <button 
+                          onClick={() => addToSale(medication)}
+                          disabled={medication.stock === 0}
+                          className="bg-green-100 hover:bg-green-200 text-green-600 px-3 py-1 rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Add to Sale
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -368,6 +397,18 @@ export default function InventoryManagement() {
           </div>
         )}
       </div>
+
+      {/* Edit Medication Modal */}
+      {showEditModal && editingMedication && (
+        <EditMedicationModal
+          medication={editingMedication}
+          onSave={handleSaveMedication}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingMedication(null);
+          }}
+        />
+      )}
 
       {/* Sale Modal */}
       {showSaleModal && (

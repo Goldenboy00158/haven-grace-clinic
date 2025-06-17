@@ -3,7 +3,8 @@ import { Search, Plus, User, Phone, Calendar, FileText, Edit, Eye } from 'lucide
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Patient, MedicalRecord, DispensedMedication } from '../types';
 import { medications } from '../data/medications';
-import { services } from '../data/services';
+import { medicalShortForms, calculateTotalQuantity } from '../data/medicalShortForms';
+import EnhancedPatientView from './EnhancedPatientView';
 
 export default function PatientManagement() {
   const [patients, setPatients] = useLocalStorage<Patient[]>('clinic-patients', []);
@@ -18,7 +19,6 @@ export default function PatientManagement() {
     age: '',
     gender: 'male' as 'male' | 'female' | 'other',
     phone: '',
-    email: '',
     address: '',
     emergencyContact: ''
   });
@@ -36,6 +36,8 @@ export default function PatientManagement() {
   const [selectedMedication, setSelectedMedication] = useState('');
   const [medicationQuantity, setMedicationQuantity] = useState(1);
   const [medicationDosage, setMedicationDosage] = useState('');
+  const [medicationFrequency, setMedicationFrequency] = useState('');
+  const [medicationDuration, setMedicationDuration] = useState(7);
   const [medicationInstructions, setMedicationInstructions] = useState('');
 
   const filteredPatients = patients.filter(patient =>
@@ -51,7 +53,6 @@ export default function PatientManagement() {
       age: parseInt(newPatient.age),
       gender: newPatient.gender,
       phone: newPatient.phone,
-      email: newPatient.email,
       address: newPatient.address,
       emergencyContact: newPatient.emergencyContact,
       medicalHistory: [],
@@ -65,7 +66,6 @@ export default function PatientManagement() {
       age: '',
       gender: 'male',
       phone: '',
-      email: '',
       address: '',
       emergencyContact: ''
     });
@@ -78,14 +78,18 @@ export default function PatientManagement() {
     const medication = medications.find(med => med.id === selectedMedication);
     if (!medication) return;
 
+    const calculatedQuantity = calculateTotalQuantity(medicationFrequency, medicationDuration);
+
     const dispensedMed: DispensedMedication = {
       medicationId: medication.id,
       medicationName: medication.name,
-      quantity: medicationQuantity,
+      quantity: calculatedQuantity,
       dosage: medicationDosage,
+      frequency: medicationFrequency,
+      duration: medicationDuration,
       instructions: medicationInstructions,
       price: medication.price,
-      totalCost: medication.price * medicationQuantity
+      totalCost: medication.price * calculatedQuantity
     };
 
     setNewRecord(prev => ({
@@ -96,6 +100,8 @@ export default function PatientManagement() {
     setSelectedMedication('');
     setMedicationQuantity(1);
     setMedicationDosage('');
+    setMedicationFrequency('');
+    setMedicationDuration(7);
     setMedicationInstructions('');
   };
 
@@ -106,28 +112,19 @@ export default function PatientManagement() {
     }));
   };
 
-  const handleAddRecord = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddRecord = (record: Omit<MedicalRecord, 'id'>) => {
     if (!selectedPatient) return;
 
-    const record: MedicalRecord = {
+    const newMedicalRecord: MedicalRecord = {
       id: Date.now().toString(),
-      patientId: selectedPatient.id,
-      date: new Date().toISOString(),
-      symptoms: newRecord.symptoms,
-      diagnosis: newRecord.diagnosis,
-      treatment: newRecord.treatment,
-      medications: newRecord.medications,
-      notes: newRecord.notes,
-      followUpDate: newRecord.followUpDate,
-      doctorName: newRecord.doctorName
+      ...record
     };
 
     setPatients(prev => prev.map(patient => 
       patient.id === selectedPatient.id 
         ? { 
             ...patient, 
-            medicalHistory: [record, ...patient.medicalHistory],
+            medicalHistory: [newMedicalRecord, ...patient.medicalHistory],
             updatedAt: new Date().toISOString()
           }
         : patient
@@ -144,6 +141,11 @@ export default function PatientManagement() {
     });
     setShowAddRecord(false);
     setSelectedPatient(null);
+  };
+
+  const handleSellToPatient = (items: DispensedMedication[]) => {
+    // This would be handled by the transaction system
+    console.log('Selling to patient:', items);
   };
 
   return (
@@ -292,15 +294,6 @@ export default function PatientManagement() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={newPatient.email}
-                  onChange={(e) => setNewPatient(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                 <textarea
                   value={newPatient.address}
@@ -338,280 +331,14 @@ export default function PatientManagement() {
         </div>
       )}
 
-      {/* Add Medical Record Modal */}
-      {showAddRecord && selectedPatient && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-xl max-w-2xl w-full p-6 my-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Add Medical Record for {selectedPatient.name}
-            </h3>
-            <form onSubmit={handleAddRecord} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Symptoms *</label>
-                <textarea
-                  required
-                  value={newRecord.symptoms}
-                  onChange={(e) => setNewRecord(prev => ({ ...prev, symptoms: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={3}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis *</label>
-                <textarea
-                  required
-                  value={newRecord.diagnosis}
-                  onChange={(e) => setNewRecord(prev => ({ ...prev, diagnosis: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={2}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Treatment *</label>
-                <textarea
-                  required
-                  value={newRecord.treatment}
-                  onChange={(e) => setNewRecord(prev => ({ ...prev, treatment: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={2}
-                />
-              </div>
-
-              {/* Medications Section */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Prescribed Medications</label>
-                <div className="border border-gray-300 rounded-lg p-4 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <select
-                        value={selectedMedication}
-                        onChange={(e) => setSelectedMedication(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">Select medication</option>
-                        {medications.map(med => (
-                          <option key={med.id} value={med.id}>
-                            {med.name} - KES {med.price}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <input
-                        type="number"
-                        min="1"
-                        value={medicationQuantity}
-                        onChange={(e) => setMedicationQuantity(parseInt(e.target.value))}
-                        placeholder="Quantity"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <input
-                        type="text"
-                        value={medicationDosage}
-                        onChange={(e) => setMedicationDosage(e.target.value)}
-                        placeholder="Dosage (e.g., 500mg)"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <input
-                        type="text"
-                        value={medicationInstructions}
-                        onChange={(e) => setMedicationInstructions(e.target.value)}
-                        placeholder="Instructions (e.g., twice daily)"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={addMedicationToRecord}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Add Medication
-                  </button>
-
-                  {/* Added Medications List */}
-                  {newRecord.medications.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-gray-700">Added Medications:</h4>
-                      {newRecord.medications.map((med, index) => (
-                        <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                          <div>
-                            <p className="font-medium">{med.medicationName}</p>
-                            <p className="text-sm text-gray-600">
-                              Qty: {med.quantity} | Dosage: {med.dosage} | {med.instructions}
-                            </p>
-                            <p className="text-sm text-gray-600">Cost: KES {med.totalCost}</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeMedicationFromRecord(index)}
-                            className="text-red-600 hover:text-red-800 text-sm"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Doctor Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newRecord.doctorName}
-                    onChange={(e) => setNewRecord(prev => ({ ...prev, doctorName: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Date</label>
-                  <input
-                    type="date"
-                    value={newRecord.followUpDate}
-                    onChange={(e) => setNewRecord(prev => ({ ...prev, followUpDate: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
-                <textarea
-                  value={newRecord.notes}
-                  onChange={(e) => setNewRecord(prev => ({ ...prev, notes: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={3}
-                />
-              </div>
-              <div className="flex space-x-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition-colors"
-                >
-                  Add Record
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddRecord(false);
-                    setSelectedPatient(null);
-                  }}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 rounded-lg font-medium transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* View Patient Modal */}
+      {/* Enhanced Patient View Modal */}
       {viewingPatient && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-xl max-w-4xl w-full p-6 my-8">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-gray-900">
-                Patient Details: {viewingPatient.name}
-              </h3>
-              <button
-                onClick={() => setViewingPatient(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6 mb-6">
-              <div className="space-y-4">
-                <h4 className="font-semibold text-gray-900">Personal Information</h4>
-                <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Age:</span> {viewingPatient.age}</p>
-                  <p><span className="font-medium">Gender:</span> {viewingPatient.gender}</p>
-                  <p><span className="font-medium">Phone:</span> {viewingPatient.phone}</p>
-                  {viewingPatient.email && <p><span className="font-medium">Email:</span> {viewingPatient.email}</p>}
-                  {viewingPatient.address && <p><span className="font-medium">Address:</span> {viewingPatient.address}</p>}
-                  {viewingPatient.emergencyContact && <p><span className="font-medium">Emergency Contact:</span> {viewingPatient.emergencyContact}</p>}
-                </div>
-              </div>
-              <div className="space-y-4">
-                <h4 className="font-semibold text-gray-900">Registration Info</h4>
-                <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Registered:</span> {new Date(viewingPatient.createdAt).toLocaleDateString()}</p>
-                  <p><span className="font-medium">Last Updated:</span> {new Date(viewingPatient.updatedAt).toLocaleDateString()}</p>
-                  <p><span className="font-medium">Total Records:</span> {viewingPatient.medicalHistory.length}</p>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-4">Medical History</h4>
-              {viewingPatient.medicalHistory.length > 0 ? (
-                <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {viewingPatient.medicalHistory.map((record) => (
-                    <div key={record.id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <p className="font-medium text-gray-900">
-                          {new Date(record.date).toLocaleDateString()}
-                        </p>
-                        <p className="text-sm text-gray-600">Dr. {record.doctorName}</p>
-                      </div>
-                      <div className="grid md:grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p className="font-medium text-gray-700">Symptoms:</p>
-                          <p className="text-gray-600">{record.symptoms}</p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-700">Diagnosis:</p>
-                          <p className="text-gray-600">{record.diagnosis}</p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-700">Treatment:</p>
-                          <p className="text-gray-600">{record.treatment}</p>
-                        </div>
-                        {record.followUpDate && (
-                          <div>
-                            <p className="font-medium text-gray-700">Follow-up:</p>
-                            <p className="text-gray-600">{new Date(record.followUpDate).toLocaleDateString()}</p>
-                          </div>
-                        )}
-                      </div>
-                      {record.medications.length > 0 && (
-                        <div className="mt-3">
-                          <p className="font-medium text-gray-700 mb-2">Medications:</p>
-                          <div className="space-y-1">
-                            {record.medications.map((med, index) => (
-                              <p key={index} className="text-sm text-gray-600">
-                                • {med.medicationName} - {med.dosage} ({med.instructions}) - Qty: {med.quantity}
-                              </p>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {record.notes && (
-                        <div className="mt-3">
-                          <p className="font-medium text-gray-700">Notes:</p>
-                          <p className="text-sm text-gray-600">{record.notes}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-8">No medical records yet.</p>
-              )}
-            </div>
-          </div>
-        </div>
+        <EnhancedPatientView
+          patient={viewingPatient}
+          onClose={() => setViewingPatient(null)}
+          onAddRecord={handleAddRecord}
+          onSellToPatient={handleSellToPatient}
+        />
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Download, DollarSign, Calendar, User, Package } from 'lucide-react';
+import { Search, Filter, Download, DollarSign, Calendar, User, Package, CheckCircle, Clock } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Transaction, Patient } from '../types';
 
@@ -8,7 +8,7 @@ export default function TransactionHistory() {
   const [patients] = useLocalStorage<Patient[]>('clinic-patients', []);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'patient' | 'general'>('all');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending' | 'confirmed'>('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
   const filteredTransactions = useMemo(() => {
@@ -34,6 +34,7 @@ export default function TransactionHistory() {
     const totalRevenue = filteredTransactions.reduce((sum, t) => sum + t.totalAmount, 0);
     const completedTransactions = filteredTransactions.filter(t => t.status === 'completed').length;
     const pendingTransactions = filteredTransactions.filter(t => t.status === 'pending').length;
+    const confirmedTransactions = filteredTransactions.filter(t => t.status === 'confirmed').length;
     const patientTransactions = filteredTransactions.filter(t => t.type === 'patient').length;
     const generalTransactions = filteredTransactions.filter(t => t.type === 'general').length;
 
@@ -41,14 +42,29 @@ export default function TransactionHistory() {
       totalRevenue,
       completedTransactions,
       pendingTransactions,
+      confirmedTransactions,
       patientTransactions,
       generalTransactions
     };
   }, [filteredTransactions]);
 
+  const confirmPayment = (transactionId: string) => {
+    setTransactions(prev => prev.map(transaction => 
+      transaction.id === transactionId 
+        ? { 
+            ...transaction, 
+            status: 'confirmed',
+            paymentConfirmed: true,
+            confirmedBy: 'Admin', // In a real app, this would be the current user
+            confirmedAt: new Date().toISOString()
+          }
+        : transaction
+    ));
+  };
+
   const exportData = () => {
     const csvContent = [
-      ['Date', 'Type', 'Patient/Customer', 'Items', 'Amount (KES)', 'Payment Method', 'Status'],
+      ['Date', 'Type', 'Patient/Customer', 'Items', 'Amount (KES)', 'Payment Method', 'Status', 'Confirmed By', 'Confirmed At'],
       ...filteredTransactions.map(transaction => [
         new Date(transaction.date).toLocaleDateString(),
         transaction.type,
@@ -56,7 +72,9 @@ export default function TransactionHistory() {
         transaction.items.length.toString(),
         transaction.totalAmount.toFixed(2),
         transaction.paymentMethod,
-        transaction.status
+        transaction.status,
+        transaction.confirmedBy || '',
+        transaction.confirmedAt ? new Date(transaction.confirmedAt).toLocaleDateString() : ''
       ])
     ].map(row => row.join(',')).join('\n');
 
@@ -87,35 +105,42 @@ export default function TransactionHistory() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
           <DollarSign className="h-6 w-6 text-green-600 mx-auto mb-2" />
           <div className="text-2xl font-bold text-gray-900">KES {stats.totalRevenue.toLocaleString()}</div>
           <div className="text-sm text-gray-600">Total Revenue</div>
         </div>
         <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
+          <CheckCircle className="h-6 w-6 text-green-600 mx-auto mb-2" />
           <div className="text-2xl font-bold text-green-600">{stats.completedTransactions}</div>
           <div className="text-sm text-gray-600">Completed</div>
         </div>
         <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
+          <Clock className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
           <div className="text-2xl font-bold text-yellow-600">{stats.pendingTransactions}</div>
           <div className="text-sm text-gray-600">Pending</div>
         </div>
         <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
-          <User className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-blue-600">{stats.patientTransactions}</div>
+          <CheckCircle className="h-6 w-6 text-blue-600 mx-auto mb-2" />
+          <div className="text-2xl font-bold text-blue-600">{stats.confirmedTransactions}</div>
+          <div className="text-sm text-gray-600">Confirmed</div>
+        </div>
+        <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
+          <User className="h-6 w-6 text-purple-600 mx-auto mb-2" />
+          <div className="text-2xl font-bold text-purple-600">{stats.patientTransactions}</div>
           <div className="text-sm text-gray-600">Patient Sales</div>
         </div>
         <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
-          <Package className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-purple-600">{stats.generalTransactions}</div>
+          <Package className="h-6 w-6 text-indigo-600 mx-auto mb-2" />
+          <div className="text-2xl font-bold text-indigo-600">{stats.generalTransactions}</div>
           <div className="text-sm text-gray-600">General Sales</div>
         </div>
       </div>
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
@@ -145,6 +170,7 @@ export default function TransactionHistory() {
             <option value="all">All Status</option>
             <option value="completed">Completed</option>
             <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
           </select>
 
           <input
@@ -160,6 +186,18 @@ export default function TransactionHistory() {
             onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
             className="border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
+
+          <button
+            onClick={() => {
+              setSearchTerm('');
+              setFilterType('all');
+              setFilterStatus('all');
+              setDateRange({ start: '', end: '' });
+            }}
+            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            Clear Filters
+          </button>
         </div>
       </div>
 
@@ -176,6 +214,7 @@ export default function TransactionHistory() {
                 <th className="text-left py-4 px-6 font-semibold text-gray-900">Amount</th>
                 <th className="text-left py-4 px-6 font-semibold text-gray-900">Payment</th>
                 <th className="text-left py-4 px-6 font-semibold text-gray-900">Status</th>
+                <th className="text-left py-4 px-6 font-semibold text-gray-900">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -216,10 +255,31 @@ export default function TransactionHistory() {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                       transaction.status === 'completed' 
                         ? 'bg-green-100 text-green-800' 
+                        : transaction.status === 'confirmed'
+                        ? 'bg-blue-100 text-blue-800'
                         : 'bg-yellow-100 text-yellow-800'
                     }`}>
                       {transaction.status}
                     </span>
+                    {transaction.confirmedBy && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        By: {transaction.confirmedBy}
+                      </div>
+                    )}
+                  </td>
+                  <td className="py-4 px-6">
+                    {transaction.status === 'completed' && !transaction.paymentConfirmed && (
+                      <button
+                        onClick={() => confirmPayment(transaction.id)}
+                        className="bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center space-x-1"
+                      >
+                        <CheckCircle className="h-3 w-3" />
+                        <span>Confirm Payment</span>
+                      </button>
+                    )}
+                    {transaction.status === 'confirmed' && (
+                      <span className="text-green-600 text-sm font-medium">✓ Confirmed</span>
+                    )}
                   </td>
                 </tr>
               ))}
