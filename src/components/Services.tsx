@@ -1,7 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Users, Ban as Bandage, Stethoscope, Activity, Scissors, Droplets, Pill, Search, Filter, Download, AlertTriangle, TrendingUp, Package } from 'lucide-react';
+import { Users, Ban as Bandage, Stethoscope, Activity, Scissors, Droplets, Pill, Search, Filter, Download, AlertTriangle, TrendingUp, Package, Plus } from 'lucide-react';
 import { medications, getStockStatus, getMedicationCategories, type Medication } from '../data/medications';
+import { services } from '../data/services';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { Service } from '../types';
+import AddServiceModal from './AddServiceModal';
 
 export default function Services() {
   const [activeTab, setActiveTab] = useState('services');
@@ -10,6 +13,8 @@ export default function Services() {
   const [sortBy, setSortBy] = useState<'name' | 'price' | 'stock' | 'status'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [medicationData, setMedicationData] = useLocalStorage<Medication[]>('clinic-medications', medications);
+  const [servicesData, setServicesData] = useLocalStorage<Service[]>('clinic-services', services);
+  const [showAddServiceModal, setShowAddServiceModal] = useState(false);
 
   const clinicServices = [
     {
@@ -117,6 +122,14 @@ export default function Services() {
     );
   };
 
+  const handleAddService = (newService: Omit<Service, 'id'>) => {
+    const service: Service = {
+      id: Date.now().toString(),
+      ...newService
+    };
+    setServicesData(prev => [service, ...prev]);
+  };
+
   const exportData = () => {
     const csvContent = [
       ['Name', 'Category', 'Price (KES)', 'Stock', 'Status', 'Value (KES)'],
@@ -184,51 +197,89 @@ export default function Services() {
 
         {/* Clinical Services Grid */}
         {activeTab === 'services' && (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {clinicServices.map((service, index) => {
-              const Icon = service.icon;
-              return (
-                <div 
-                  key={index} 
-                  className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 group"
-                >
-                  <div className="space-y-6">
-                    {/* Icon */}
-                    <div className="bg-blue-100 group-hover:bg-blue-600 w-16 h-16 rounded-xl flex items-center justify-center transition-colors duration-300">
-                      <Icon className="h-8 w-8 text-blue-600 group-hover:text-white transition-colors duration-300" />
-                    </div>
+          <div className="space-y-8">
+            {/* Add Service Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowAddServiceModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center space-x-2"
+              >
+                <Plus className="h-5 w-5" />
+                <span>Add New Service</span>
+              </button>
+            </div>
 
-                    {/* Content */}
-                    <div className="space-y-4">
-                      <h3 className="text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
-                        {service.title}
-                      </h3>
-                      <p className="text-gray-600 leading-relaxed">
-                        {service.description}
-                      </p>
-                      <div className="bg-green-50 px-3 py-2 rounded-lg">
-                        <p className="text-green-700 font-semibold text-sm">{service.price}</p>
+            {/* Default Services */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {clinicServices.map((service, index) => {
+                const Icon = service.icon;
+                return (
+                  <div 
+                    key={index} 
+                    className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 group"
+                  >
+                    <div className="space-y-6">
+                      {/* Icon */}
+                      <div className="bg-blue-100 group-hover:bg-blue-600 w-16 h-16 rounded-xl flex items-center justify-center transition-colors duration-300">
+                        <Icon className="h-8 w-8 text-blue-600 group-hover:text-white transition-colors duration-300" />
+                      </div>
+
+                      {/* Content */}
+                      <div className="space-y-4">
+                        <h3 className="text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
+                          {service.title}
+                        </h3>
+                        <p className="text-gray-600 leading-relaxed">
+                          {service.description}
+                        </p>
+                        <div className="bg-green-50 px-3 py-2 rounded-lg">
+                          <p className="text-green-700 font-semibold text-sm">{service.price}</p>
+                        </div>
+                      </div>
+
+                      {/* Features */}
+                      <div className="space-y-2">
+                        {service.features.map((feature, featureIndex) => (
+                          <div key={featureIndex} className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                            <span className="text-sm text-gray-700">{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* CTA */}
+                      <button className="w-full bg-gray-100 hover:bg-blue-600 text-gray-700 hover:text-white py-3 rounded-lg font-medium transition-all duration-300 group-hover:shadow-lg">
+                        Book Service
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Custom Services */}
+            {servicesData.length > 0 && (
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-6">Additional Services</h3>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {servicesData.map((service) => (
+                    <div key={service.id} className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
+                      <div className="space-y-4">
+                        <h4 className="text-xl font-semibold text-gray-900">{service.name}</h4>
+                        <p className="text-gray-600">{service.description}</p>
+                        <div className="flex justify-between items-center">
+                          <span className="text-lg font-bold text-blue-600">KES {service.price}</span>
+                          <span className="text-sm text-gray-500 capitalize">{service.category.replace('_', ' ')}</span>
+                        </div>
+                        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition-colors">
+                          Book Service
+                        </button>
                       </div>
                     </div>
-
-                    {/* Features */}
-                    <div className="space-y-2">
-                      {service.features.map((feature, featureIndex) => (
-                        <div key={featureIndex} className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                          <span className="text-sm text-gray-700">{feature}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* CTA */}
-                    <button className="w-full bg-gray-100 hover:bg-blue-600 text-gray-700 hover:text-white py-3 rounded-lg font-medium transition-all duration-300 group-hover:shadow-lg">
-                      Book Service
-                    </button>
-                  </div>
+                  ))}
                 </div>
-              );
-            })}
+              </div>
+            )}
           </div>
         )}
 
@@ -441,6 +492,14 @@ export default function Services() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Add Service Modal */}
+        {showAddServiceModal && (
+          <AddServiceModal
+            onSave={handleAddService}
+            onClose={() => setShowAddServiceModal(false)}
+          />
         )}
       </div>
     </section>

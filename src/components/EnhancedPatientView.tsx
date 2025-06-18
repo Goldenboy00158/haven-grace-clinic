@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { User, Phone, Calendar, FileText, Plus, ShoppingCart, Activity, Thermometer, Heart, Weight, Ruler, Droplets, Wind } from 'lucide-react';
-import { Patient, MedicalRecord, DispensedMedication, VitalSigns } from '../types';
+import { User, Phone, Calendar, FileText, Plus, ShoppingCart, Activity, Thermometer, Heart, Weight, Ruler, Droplets, Wind, X } from 'lucide-react';
+import { Patient, MedicalRecord, DispensedMedication, VitalSigns, Transaction } from '../types';
 import { medications } from '../data/medications';
 import { medicalShortForms, calculateTotalQuantity } from '../data/medicalShortForms';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
 interface EnhancedPatientViewProps {
   patient: Patient;
@@ -16,6 +17,7 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
   const [showAddRecord, setShowAddRecord] = useState(false);
   const [showSellModal, setShowSellModal] = useState(false);
   const [selectedItems, setSelectedItems] = useState<DispensedMedication[]>([]);
+  const [transactions, setTransactions] = useLocalStorage<Transaction[]>('clinic-transactions', []);
 
   const [newRecord, setNewRecord] = useState({
     symptoms: '',
@@ -126,6 +128,23 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
   };
 
   const completeSale = () => {
+    if (selectedItems.length === 0) return;
+
+    const totalAmount = selectedItems.reduce((sum, item) => sum + item.totalCost, 0);
+    
+    const transaction: Transaction = {
+      id: Date.now().toString(),
+      type: 'patient',
+      patientId: patient.id,
+      patientName: patient.name,
+      items: selectedItems,
+      totalAmount,
+      date: new Date().toISOString(),
+      paymentMethod: 'cash',
+      status: 'completed'
+    };
+
+    setTransactions(prev => [transaction, ...prev]);
     onSellToPatient(selectedItems);
     setSelectedItems([]);
     setShowSellModal(false);
@@ -150,6 +169,9 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
                     <Phone className="h-4 w-4 mr-1" />
                     {patient.phone}
                   </span>
+                  {patient.gynecologicHistory && (
+                    <span>G{patient.gynecologicHistory.gravida}P{patient.gynecologicHistory.para}</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -172,11 +194,47 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
                 onClick={onClose}
                 className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-medium transition-colors"
               >
-                Close
+                <X className="h-4 w-4" />
               </button>
             </div>
           </div>
         </div>
+
+        {/* Gynecologic History for Females */}
+        {patient.gynecologicHistory && (
+          <div className="p-6 bg-pink-50 border-b">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Gynecologic & Obstetric History</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <span className="font-medium text-gray-700">Gravida:</span>
+                <span className="ml-2">{patient.gynecologicHistory.gravida || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Para:</span>
+                <span className="ml-2">{patient.gynecologicHistory.para || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">LMP:</span>
+                <span className="ml-2">
+                  {patient.gynecologicHistory.lastMenstrualPeriod 
+                    ? new Date(patient.gynecologicHistory.lastMenstrualPeriod).toLocaleDateString()
+                    : 'N/A'
+                  }
+                </span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Contraception:</span>
+                <span className="ml-2">{patient.gynecologicHistory.contraceptiveHistory || 'N/A'}</span>
+              </div>
+            </div>
+            {patient.gynecologicHistory.pregnancyHistory && (
+              <div className="mt-3">
+                <span className="font-medium text-gray-700">Pregnancy History:</span>
+                <p className="text-gray-600 mt-1">{patient.gynecologicHistory.pregnancyHistory}</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Navigation Tabs */}
         <div className="border-b">
@@ -255,6 +313,7 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
                                   <span className="font-medium">{record.vitalSigns.bloodPressure} mmHg</span>
                                 </div>
                               )}
+                
                               {record.vitalSigns.temperature && (
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Temperature:</span>

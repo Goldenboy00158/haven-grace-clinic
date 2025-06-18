@@ -4,6 +4,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { medications, getStockStatus, getMedicationCategories } from '../data/medications';
 import { Medication, Patient, Transaction, SaleItem } from '../types';
 import EditMedicationModal from './EditMedicationModal';
+import AddMedicationModal from './AddMedicationModal';
 
 export default function InventoryManagement() {
   const [medicationData, setMedicationData] = useLocalStorage<Medication[]>('clinic-medications', medications);
@@ -15,8 +16,9 @@ export default function InventoryManagement() {
   const [sortBy, setSortBy] = useState<'name' | 'price' | 'stock' | 'status'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   
-  // Edit modal states
+  // Modal states
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
   
   // Sale modal states
@@ -85,6 +87,14 @@ export default function InventoryManagement() {
         med.id === medicationId ? { ...med, stock: Math.max(0, newStock) } : med
       )
     );
+  };
+
+  const handleAddMedication = (newMedication: Omit<Medication, 'id'>) => {
+    const medication: Medication = {
+      id: Date.now().toString(),
+      ...newMedication
+    };
+    setMedicationData(prev => [medication, ...prev]);
   };
 
   const handleEditMedication = (medication: Medication) => {
@@ -215,6 +225,13 @@ export default function InventoryManagement() {
         </div>
         <div className="flex space-x-3">
           <button
+            onClick={() => setShowAddModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Medication</span>
+          </button>
+          <button
             onClick={() => setShowSaleModal(true)}
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
           >
@@ -223,7 +240,7 @@ export default function InventoryManagement() {
           </button>
           <button
             onClick={exportData}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
           >
             <Download className="h-4 w-4" />
             <span>Export CSV</span>
@@ -397,6 +414,14 @@ export default function InventoryManagement() {
           </div>
         )}
       </div>
+
+      {/* Add Medication Modal */}
+      {showAddModal && (
+        <AddMedicationModal
+          onSave={handleAddMedication}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
 
       {/* Edit Medication Modal */}
       {showEditModal && editingMedication && (

@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
 import { Search, Plus, User, Phone, Calendar, FileText, Edit, Eye } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { Patient, MedicalRecord, DispensedMedication } from '../types';
+import { Patient, MedicalRecord, DispensedMedication, VitalSigns, Transaction } from '../types';
 import { medications } from '../data/medications';
 import { medicalShortForms, calculateTotalQuantity } from '../data/medicalShortForms';
 import EnhancedPatientView from './EnhancedPatientView';
 
 export default function PatientManagement() {
   const [patients, setPatients] = useLocalStorage<Patient[]>('clinic-patients', []);
+  const [transactions, setTransactions] = useLocalStorage<Transaction[]>('clinic-transactions', []);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddPatient, setShowAddPatient] = useState(false);
-  const [showAddRecord, setShowAddRecord] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [viewingPatient, setViewingPatient] = useState<Patient | null>(null);
 
   const [newPatient, setNewPatient] = useState({
@@ -20,21 +19,26 @@ export default function PatientManagement() {
     gender: 'male' as 'male' | 'female' | 'other',
     phone: '',
     address: '',
-    emergencyContact: ''
-  });
-
-  const [newRecord, setNewRecord] = useState({
+    emergencyContact: '',
+    // First visit medical record
     symptoms: '',
     diagnosis: '',
     treatment: '',
     medications: [] as DispensedMedication[],
+    vitalSigns: {} as VitalSigns,
     notes: '',
     followUpDate: '',
-    doctorName: ''
+    doctorName: '',
+    analysisNotes: '',
+    // Gynecologic and Obstetric History (for females)
+    gravida: '',
+    para: '',
+    lastMenstrualPeriod: '',
+    contraceptiveHistory: '',
+    pregnancyHistory: ''
   });
 
   const [selectedMedication, setSelectedMedication] = useState('');
-  const [medicationQuantity, setMedicationQuantity] = useState(1);
   const [medicationDosage, setMedicationDosage] = useState('');
   const [medicationFrequency, setMedicationFrequency] = useState('');
   const [medicationDuration, setMedicationDuration] = useState(7);
@@ -44,33 +48,6 @@ export default function PatientManagement() {
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     patient.phone.includes(searchTerm)
   );
-
-  const handleAddPatient = (e: React.FormEvent) => {
-    e.preventDefault();
-    const patient: Patient = {
-      id: Date.now().toString(),
-      name: newPatient.name,
-      age: parseInt(newPatient.age),
-      gender: newPatient.gender,
-      phone: newPatient.phone,
-      address: newPatient.address,
-      emergencyContact: newPatient.emergencyContact,
-      medicalHistory: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    setPatients(prev => [patient, ...prev]);
-    setNewPatient({
-      name: '',
-      age: '',
-      gender: 'male',
-      phone: '',
-      address: '',
-      emergencyContact: ''
-    });
-    setShowAddPatient(false);
-  };
 
   const addMedicationToRecord = () => {
     if (!selectedMedication) return;
@@ -92,36 +69,104 @@ export default function PatientManagement() {
       totalCost: medication.price * calculatedQuantity
     };
 
-    setNewRecord(prev => ({
+    setNewPatient(prev => ({
       ...prev,
       medications: [...prev.medications, dispensedMed]
     }));
 
     setSelectedMedication('');
-    setMedicationQuantity(1);
     setMedicationDosage('');
     setMedicationFrequency('');
     setMedicationDuration(7);
     setMedicationInstructions('');
   };
 
-  const removeMedicationFromRecord = (index: number) => {
-    setNewRecord(prev => ({
-      ...prev,
-      medications: prev.medications.filter((_, i) => i !== index)
-    }));
+  const handleAddPatient = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const patientId = Date.now().toString();
+    
+    // Create first medical record if any medical data is provided
+    const firstRecord: MedicalRecord | null = (
+      newPatient.symptoms || 
+      newPatient.diagnosis || 
+      newPatient.treatment || 
+      newPatient.medications.length > 0 ||
+      Object.keys(newPatient.vitalSigns).length > 0
+    ) ? {
+      id: (Date.now() + 1).toString(),
+      patientId: patientId,
+      date: new Date().toISOString(),
+      symptoms: newPatient.symptoms,
+      diagnosis: newPatient.diagnosis,
+      treatment: newPatient.treatment,
+      medications: newPatient.medications,
+      vitalSigns: newPatient.vitalSigns,
+      notes: newPatient.notes,
+      followUpDate: newPatient.followUpDate,
+      doctorName: newPatient.doctorName,
+      analysisNotes: newPatient.analysisNotes
+    } : null;
+
+    const patient: Patient = {
+      id: patientId,
+      name: newPatient.name,
+      age: parseInt(newPatient.age),
+      gender: newPatient.gender,
+      phone: newPatient.phone,
+      address: newPatient.address,
+      emergencyContact: newPatient.emergencyContact,
+      medicalHistory: firstRecord ? [firstRecord] : [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      // Add gynecologic history for females
+      ...(newPatient.gender === 'female' && {
+        gynecologicHistory: {
+          gravida: newPatient.gravida,
+          para: newPatient.para,
+          lastMenstrualPeriod: newPatient.lastMenstrualPeriod,
+          contraceptiveHistory: newPatient.contraceptiveHistory,
+          pregnancyHistory: newPatient.pregnancyHistory
+        }
+      })
+    };
+
+    setPatients(prev => [patient, ...prev]);
+    
+    // Reset form
+    setNewPatient({
+      name: '',
+      age: '',
+      gender: 'male',
+      phone: '',
+      address: '',
+      emergencyContact: '',
+      symptoms: '',
+      diagnosis: '',
+      treatment: '',
+      medications: [],
+      vitalSigns: {},
+      notes: '',
+      followUpDate: '',
+      doctorName: '',
+      analysisNotes: '',
+      gravida: '',
+      para: '',
+      lastMenstrualPeriod: '',
+      contraceptiveHistory: '',
+      pregnancyHistory: ''
+    });
+    setShowAddPatient(false);
   };
 
   const handleAddRecord = (record: Omit<MedicalRecord, 'id'>) => {
-    if (!selectedPatient) return;
-
     const newMedicalRecord: MedicalRecord = {
       id: Date.now().toString(),
       ...record
     };
 
     setPatients(prev => prev.map(patient => 
-      patient.id === selectedPatient.id 
+      patient.id === record.patientId 
         ? { 
             ...patient, 
             medicalHistory: [newMedicalRecord, ...patient.medicalHistory],
@@ -129,23 +174,27 @@ export default function PatientManagement() {
           }
         : patient
     ));
-
-    setNewRecord({
-      symptoms: '',
-      diagnosis: '',
-      treatment: '',
-      medications: [],
-      notes: '',
-      followUpDate: '',
-      doctorName: ''
-    });
-    setShowAddRecord(false);
-    setSelectedPatient(null);
   };
 
-  const handleSellToPatient = (items: DispensedMedication[]) => {
-    // This would be handled by the transaction system
-    console.log('Selling to patient:', items);
+  const handleSellToPatient = (patientId: string, items: DispensedMedication[]) => {
+    const patient = patients.find(p => p.id === patientId);
+    if (!patient || items.length === 0) return;
+
+    const totalAmount = items.reduce((sum, item) => sum + item.totalCost, 0);
+    
+    const transaction: Transaction = {
+      id: Date.now().toString(),
+      type: 'patient',
+      patientId: patient.id,
+      patientName: patient.name,
+      items: items,
+      totalAmount,
+      date: new Date().toISOString(),
+      paymentMethod: 'cash',
+      status: 'completed'
+    };
+
+    setTransactions(prev => [transaction, ...prev]);
   };
 
   return (
@@ -208,6 +257,9 @@ export default function PatientManagement() {
                         ? new Date(patient.medicalHistory[0].date).toLocaleDateString()
                         : 'Never'
                       }</span>
+                      {patient.gynecologicHistory && (
+                        <span>G{patient.gynecologicHistory.gravida}P{patient.gynecologicHistory.para}</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -218,16 +270,6 @@ export default function PatientManagement() {
                   >
                     <Eye className="h-4 w-4" />
                     <span>View</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedPatient(patient);
-                      setShowAddRecord(true);
-                    }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span>Add Record</span>
                   </button>
                 </div>
               </div>
@@ -246,82 +288,387 @@ export default function PatientManagement() {
       {/* Add Patient Modal */}
       {showAddPatient && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Add New Patient</h3>
-            <form onSubmit={handleAddPatient} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={newPatient.name}
-                  onChange={(e) => setNewPatient(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[95vh] overflow-y-auto p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Add New Patient with First Visit</h3>
+            <form onSubmit={handleAddPatient} className="space-y-6">
+              {/* Patient Information */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-4">Patient Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newPatient.name}
+                      onChange={(e) => setNewPatient(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Age *</label>
+                    <input
+                      type="number"
+                      required
+                      value={newPatient.age}
+                      onChange={(e) => setNewPatient(prev => ({ ...prev, age: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
+                    <select
+                      value={newPatient.gender}
+                      onChange={(e) => setNewPatient(prev => ({ ...prev, gender: e.target.value as any }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+                    <input
+                      type="tel"
+                      required
+                      value={newPatient.phone}
+                      onChange={(e) => setNewPatient(prev => ({ ...prev, phone: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <textarea
+                      value={newPatient.address}
+                      onChange={(e) => setNewPatient(prev => ({ ...prev, address: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows={2}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
+                    <input
+                      type="tel"
+                      value={newPatient.emergencyContact}
+                      onChange={(e) => setNewPatient(prev => ({ ...prev, emergencyContact: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
               </div>
+
+              {/* Gynecologic and Obstetric History (for females) */}
+              {newPatient.gender === 'female' && (
+                <div className="bg-pink-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-gray-900 mb-4">Gynecologic & Obstetric History</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Gravida (G)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={newPatient.gravida}
+                        onChange={(e) => setNewPatient(prev => ({ ...prev, gravida: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Para (P)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={newPatient.para}
+                        onChange={(e) => setNewPatient(prev => ({ ...prev, para: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Last Menstrual Period</label>
+                      <input
+                        type="date"
+                        value={newPatient.lastMenstrualPeriod}
+                        onChange={(e) => setNewPatient(prev => ({ ...prev, lastMenstrualPeriod: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Contraceptive History</label>
+                      <input
+                        type="text"
+                        value={newPatient.contraceptiveHistory}
+                        onChange={(e) => setNewPatient(prev => ({ ...prev, contraceptiveHistory: e.target.value }))}
+                        placeholder="e.g., OCP, IUD, Condoms"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Pregnancy History</label>
+                      <textarea
+                        value={newPatient.pregnancyHistory}
+                        onChange={(e) => setNewPatient(prev => ({ ...prev, pregnancyHistory: e.target.value }))}
+                        placeholder="Previous pregnancies, complications, deliveries..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Vital Signs */}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-4">Vital Signs (First Visit)</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Blood Pressure</label>
+                    <input
+                      type="text"
+                      placeholder="120/80"
+                      value={newPatient.vitalSigns.bloodPressure || ''}
+                      onChange={(e) => setNewPatient(prev => ({
+                        ...prev,
+                        vitalSigns: { ...prev.vitalSigns, bloodPressure: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Temperature (°C)</label>
+                    <input
+                      type="text"
+                      placeholder="36.5"
+                      value={newPatient.vitalSigns.temperature || ''}
+                      onChange={(e) => setNewPatient(prev => ({
+                        ...prev,
+                        vitalSigns: { ...prev.vitalSigns, temperature: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Pulse (bpm)</label>
+                    <input
+                      type="text"
+                      placeholder="72"
+                      value={newPatient.vitalSigns.pulse || ''}
+                      onChange={(e) => setNewPatient(prev => ({
+                        ...prev,
+                        vitalSigns: { ...prev.vitalSigns, pulse: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+                    <input
+                      type="text"
+                      placeholder="70"
+                      value={newPatient.vitalSigns.weight || ''}
+                      onChange={(e) => setNewPatient(prev => ({
+                        ...prev,
+                        vitalSigns: { ...prev.vitalSigns, weight: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Clinical Information */}
+              <div className="bg-green-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-4">Clinical Information (First Visit)</h4>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Symptoms</label>
+                    <textarea
+                      value={newPatient.symptoms}
+                      onChange={(e) => setNewPatient(prev => ({ ...prev, symptoms: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows={3}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis</label>
+                    <textarea
+                      value={newPatient.diagnosis}
+                      onChange={(e) => setNewPatient(prev => ({ ...prev, diagnosis: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Plan</label>
+                  <textarea
+                    value={newPatient.treatment}
+                    onChange={(e) => setNewPatient(prev => ({ ...prev, treatment: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Clinical Analysis</label>
+                  <textarea
+                    value={newPatient.analysisNotes}
+                    onChange={(e) => setNewPatient(prev => ({ ...prev, analysisNotes: e.target.value }))}
+                    placeholder="Detailed analysis of patient's condition, prognosis, and recommendations..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows={4}
+                  />
+                </div>
+              </div>
+
+              {/* Medication Prescription */}
+              <div className="bg-yellow-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-4">Prescribe Medications</h4>
+                <div className="border border-gray-300 rounded-lg p-4 space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div>
+                      <select
+                        value={selectedMedication}
+                        onChange={(e) => setSelectedMedication(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">Select medication</option>
+                        {medications.map(med => (
+                          <option key={med.id} value={med.id}>
+                            {med.name} - KES {med.price}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={medicationDosage}
+                        onChange={(e) => setMedicationDosage(e.target.value)}
+                        placeholder="Dosage (e.g., 500mg)"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <select
+                        value={medicationFrequency}
+                        onChange={(e) => setMedicationFrequency(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">Select frequency</option>
+                        {medicalShortForms.map(form => (
+                          <option key={form.code} value={form.code}>
+                            {form.code} - {form.description}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <input
+                        type="number"
+                        min="1"
+                        value={medicationDuration}
+                        onChange={(e) => setMedicationDuration(parseInt(e.target.value))}
+                        placeholder="Duration (days)"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={medicationInstructions}
+                        onChange={(e) => setMedicationInstructions(e.target.value)}
+                        placeholder="Instructions (e.g., after meals)"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addMedicationToRecord}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Add Medication
+                  </button>
+
+                  {/* Prescribed Medications List */}
+                  {newPatient.medications.length > 0 && (
+                    <div className="space-y-2">
+                      <h5 className="text-sm font-medium text-gray-700">Prescribed Medications:</h5>
+                      {newPatient.medications.map((med, index) => (
+                        <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                          <div>
+                            <p className="font-medium">{med.medicationName}</p>
+                            <p className="text-sm text-gray-600">
+                              {med.dosage} - {med.frequency} for {med.duration} days
+                            </p>
+                            <p className="text-sm text-gray-500">{med.instructions}</p>
+                            <p className="text-sm font-medium text-green-600">
+                              Qty: {med.quantity} - KES {med.totalCost}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setNewPatient(prev => ({
+                              ...prev,
+                              medications: prev.medications.filter((_, i) => i !== index)
+                            }))}
+                            className="text-red-600 hover:text-red-800 text-sm"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Additional Information */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Age *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Doctor Name</label>
                   <input
-                    type="number"
-                    required
-                    value={newPatient.age}
-                    onChange={(e) => setNewPatient(prev => ({ ...prev, age: e.target.value }))}
+                    type="text"
+                    value={newPatient.doctorName}
+                    onChange={(e) => setNewPatient(prev => ({ ...prev, doctorName: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
-                  <select
-                    value={newPatient.gender}
-                    onChange={(e) => setNewPatient(prev => ({ ...prev, gender: e.target.value as any }))}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Date</label>
+                  <input
+                    type="date"
+                    value={newPatient.followUpDate}
+                    onChange={(e) => setNewPatient(prev => ({ ...prev, followUpDate: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </select>
+                  />
                 </div>
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
-                <input
-                  type="tel"
-                  required
-                  value={newPatient.phone}
-                  onChange={(e) => setNewPatient(prev => ({ ...prev, phone: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
                 <textarea
-                  value={newPatient.address}
-                  onChange={(e) => setNewPatient(prev => ({ ...prev, address: e.target.value }))}
+                  value={newPatient.notes}
+                  onChange={(e) => setNewPatient(prev => ({ ...prev, notes: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={2}
+                  rows={3}
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
-                <input
-                  type="tel"
-                  value={newPatient.emergencyContact}
-                  onChange={(e) => setNewPatient(prev => ({ ...prev, emergencyContact: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
+
               <div className="flex space-x-3 pt-4">
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition-colors"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors"
                 >
                   Add Patient
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddPatient(false)}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 rounded-lg font-medium transition-colors"
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 rounded-lg font-medium transition-colors"
                 >
                   Cancel
                 </button>
@@ -337,7 +684,7 @@ export default function PatientManagement() {
           patient={viewingPatient}
           onClose={() => setViewingPatient(null)}
           onAddRecord={handleAddRecord}
-          onSellToPatient={handleSellToPatient}
+          onSellToPatient={(items) => handleSellToPatient(viewingPatient.id, items)}
         />
       )}
     </div>

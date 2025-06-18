@@ -12,6 +12,14 @@ export interface Medication {
   batchNumber?: string;
 }
 
+export interface GynecologicHistory {
+  gravida?: string;
+  para?: string;
+  lastMenstrualPeriod?: string;
+  contraceptiveHistory?: string;
+  pregnancyHistory?: string;
+}
+
 export interface Patient {
   id: string;
   name: string;
@@ -21,6 +29,7 @@ export interface Patient {
   address?: string;
   emergencyContact?: string;
   medicalHistory: MedicalRecord[];
+  gynecologicHistory?: GynecologicHistory;
   createdAt: string;
   updatedAt: string;
 }
@@ -81,7 +90,7 @@ export interface Service {
   id: string;
   name: string;
   price: number;
-  category: 'general_medicine';
+  category: 'general_medicine' | 'diagnostics' | 'procedures' | 'consultations';
   description: string;
 }
 
