@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, User, FileText, Plus, Activity, Heart, Thermometer, Weight, Ruler, Droplets, Wind, X, Save, Clock, Stethoscope } from 'lucide-react';
 import { Patient, MedicalRecord, DispensedMedication, VitalSigns } from '../types';
-import { medications } from '../data/medications';
+import { getTabletCapsuleMedications } from '../data/medications';
 import { medicalShortForms, calculateTotalQuantity } from '../data/medicalShortForms';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 
@@ -26,6 +26,9 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
   const [showAddRecord, setShowAddRecord] = useState(false);
   const [services] = useLocalStorage<ClinicalService[]>('clinic-clinical-services', []);
 
+  // Get only tablet/capsule medications for prescription
+  const availableMedications = getTabletCapsuleMedications();
+
   const [newRecord, setNewRecord] = useState({
     symptoms: '',
     diagnosis: '',
@@ -48,9 +51,9 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
   const lastVisit = patient.medicalHistory[0];
 
   const addMedicationToRecord = () => {
-    if (!selectedMedication) return;
+    if (!selectedMedication || !medicationFrequency) return;
 
-    const medication = medications.find(med => med.id === selectedMedication);
+    const medication = availableMedications.find(med => med.id === selectedMedication);
     if (!medication) return;
 
     const calculatedQuantity = calculateTotalQuantity(medicationFrequency, medicationDuration);
@@ -310,7 +313,7 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
                                   </div>
                                   <div className="text-sm text-gray-500">{med.instructions}</div>
                                   <div className="text-sm font-medium text-green-600">
-                                    Qty: {med.quantity} - KES {med.totalCost}
+                                    Qty: {med.quantity} tablets/capsules - KES {med.totalCost}
                                   </div>
                                 </div>
                               ))}
@@ -579,7 +582,7 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
 
                 {/* Medication Prescription */}
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Prescribe Medications</h4>
+                  <h4 className="font-medium text-gray-900 mb-3">Prescribe Medications (Tablets/Capsules Only)</h4>
                   <div className="border border-gray-300 rounded-lg p-4 space-y-4">
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       <div>
@@ -589,9 +592,9 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                           <option value="">Select medication</option>
-                          {medications.map(med => (
+                          {availableMedications.map(med => (
                             <option key={med.id} value={med.id}>
-                              {med.name} - KES {med.price}
+                              {med.name} - KES {med.price} (Stock: {med.stock})
                             </option>
                           ))}
                         </select>
@@ -641,10 +644,25 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
                         />
                       </div>
                     </div>
+                    
+                    {/* Quantity Calculator Display */}
+                    {selectedMedication && medicationFrequency && medicationDuration > 0 && (
+                      <div className="bg-blue-100 p-3 rounded-lg">
+                        <p className="text-sm text-blue-800">
+                          <strong>Calculated Quantity:</strong> {calculateTotalQuantity(medicationFrequency, medicationDuration)} tablets/capsules
+                          <br />
+                          <span className="text-xs">
+                            ({medicationFrequency} × {medicationDuration} days = {calculateTotalQuantity(medicationFrequency, medicationDuration)} units)
+                          </span>
+                        </p>
+                      </div>
+                    )}
+                    
                     <button
                       type="button"
                       onClick={addMedicationToRecord}
-                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                      disabled={!selectedMedication || !medicationFrequency}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Add Medication
                     </button>
@@ -662,7 +680,7 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
                               </p>
                               <p className="text-sm text-gray-500">{med.instructions}</p>
                               <p className="text-sm font-medium text-green-600">
-                                Qty: {med.quantity} - KES {med.totalCost}
+                                Qty: {med.quantity} tablets/capsules - KES {med.totalCost}
                               </p>
                             </div>
                             <button
@@ -677,6 +695,11 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
                             </button>
                           </div>
                         ))}
+                        <div className="bg-green-100 p-3 rounded-lg">
+                          <p className="font-semibold text-green-800">
+                            Total Medication Cost: KES {newRecord.medications.reduce((sum, med) => sum + med.totalCost, 0)}
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
