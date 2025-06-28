@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Users, Ban as Bandage, Stethoscope, Activity, Scissors, Droplets, Pill, Search, Filter, Download, AlertTriangle, TrendingUp, Package, Plus } from 'lucide-react';
+import { Users, Ban as Bandage, Stethoscope, Activity, Scissors, Droplets, Pill, Search, Filter, Download, AlertTriangle, TrendingUp, Package, Plus, Heart, Baby, Shield } from 'lucide-react';
 import { medications, getStockStatus, getMedicationCategories, type Medication } from '../data/medications';
 import { services } from '../data/services';
 import { useLocalStorage } from '../hooks/useLocalStorage';
@@ -22,42 +22,162 @@ export default function Services() {
       title: "Family Planning",
       description: "Comprehensive reproductive health services and family planning counseling.",
       features: ["Contraceptive Counseling", "Pregnancy Testing", "Reproductive Health", "STI Screening"],
-      price: "KES 500 - 1,500"
+      price: "KES 500 - 1,500",
+      category: "family_planning"
     },
     {
       icon: Bandage,
       title: "Wound Dressing",
       description: "Professional wound care and dressing services for optimal healing.",
       features: ["Wound Assessment", "Sterile Dressing", "Infection Prevention", "Healing Monitoring"],
-      price: "KES 300 - 800"
+      price: "KES 300 - 800",
+      category: "procedures"
     },
     {
       icon: Stethoscope,
       title: "Blood Pressure Monitoring",
       description: "Regular BP monitoring and hypertension management services.",
       features: ["24-Hour Monitoring", "Hypertension Management", "Lifestyle Counseling", "Medication Adjustment"],
-      price: "KES 200 - 500"
+      price: "KES 200 - 500",
+      category: "diagnostics"
     },
     {
       icon: Activity,
       title: "Blood Sugar Monitoring",
       description: "Comprehensive diabetes care and blood glucose monitoring services.",
       features: ["HbA1c Testing", "Glucose Monitoring", "Diabetes Education", "Dietary Counseling"],
-      price: "KES 300 - 700"
+      price: "KES 300 - 700",
+      category: "diagnostics"
     },
     {
       icon: Scissors,
       title: "Suturing Services",
       description: "Professional wound closure and suturing for cuts and surgical procedures.",
       features: ["Wound Closure", "Surgical Suturing", "Cosmetic Repair", "Post-Op Care"],
-      price: "KES 800 - 2,000"
+      price: "KES 800 - 2,000",
+      category: "procedures"
     },
     {
       icon: Droplets,
       title: "Laboratory Services",
       description: "On-site laboratory testing for quick and accurate diagnostic results.",
       features: ["Blood Tests", "Urine Analysis", "Rapid Testing", "Health Screenings"],
-      price: "KES 400 - 1,200"
+      price: "KES 400 - 1,200",
+      category: "diagnostics"
+    }
+  ];
+
+  // Enhanced Family Planning Services
+  const familyPlanningServices = [
+    {
+      icon: Shield,
+      title: "Contraceptive Implant Services",
+      description: "Long-term contraceptive protection with subdermal implants.",
+      features: [
+        "Implant Insertion (3-year protection)",
+        "Implant Removal",
+        "Pre & Post-insertion Counseling",
+        "Follow-up Care"
+      ],
+      price: "Insertion: KES 2,500 | Removal: KES 1,500",
+      category: "family_planning",
+      details: {
+        insertion: {
+          duration: "20 minutes",
+          requirements: ["Contraceptive implant", "Local anesthetic", "Sterile insertion kit"],
+          effectiveness: "99.9% effective for 3 years"
+        },
+        removal: {
+          duration: "15 minutes", 
+          requirements: ["Local anesthetic", "Surgical instruments", "Antiseptic"],
+          notes: "Safe removal with minimal scarring"
+        }
+      }
+    },
+    {
+      icon: Heart,
+      title: "IUD Services",
+      description: "Intrauterine device insertion and removal services.",
+      features: [
+        "Copper T IUD (10-year protection)",
+        "Hormonal IUD (5-year protection)", 
+        "IUD Removal",
+        "Comprehensive Counseling"
+      ],
+      price: "Copper T: KES 3,000 | Hormonal: KES 8,000 | Removal: KES 1,200",
+      category: "family_planning",
+      details: {
+        copperT: {
+          duration: "25 minutes",
+          effectiveness: "99.2% effective for 10 years",
+          requirements: ["Copper T IUD", "Speculum", "Tenaculum", "Uterine sound"]
+        },
+        hormonal: {
+          duration: "25 minutes",
+          effectiveness: "99.8% effective for 5 years",
+          requirements: ["Hormonal IUD", "Speculum", "Tenaculum", "Uterine sound"]
+        }
+      }
+    },
+    {
+      icon: Baby,
+      title: "Injectable Contraceptives",
+      description: "3-monthly contraceptive injections for reliable protection.",
+      features: [
+        "Depo-Provera Injection",
+        "3-month Protection",
+        "Counseling & Education",
+        "Side Effect Management"
+      ],
+      price: "KES 800 per injection",
+      category: "family_planning",
+      details: {
+        injection: {
+          duration: "10 minutes",
+          effectiveness: "99% effective for 3 months",
+          requirements: ["Depo-Provera injection", "Syringe", "Antiseptic"]
+        }
+      }
+    },
+    {
+      icon: Pill,
+      title: "Emergency Contraception",
+      description: "Emergency contraceptive services and counseling.",
+      features: [
+        "Emergency Contraceptive Pills",
+        "Immediate Counseling",
+        "Follow-up Care",
+        "Future Planning"
+      ],
+      price: "KES 300",
+      category: "family_planning",
+      details: {
+        emergency: {
+          duration: "10 minutes",
+          effectiveness: "85% effective within 72 hours",
+          requirements: ["Emergency contraceptive pill", "Patient education materials"]
+        }
+      }
+    },
+    {
+      icon: Users,
+      title: "Family Planning Counseling",
+      description: "Comprehensive reproductive health counseling and education.",
+      features: [
+        "Contraceptive Method Selection",
+        "Reproductive Health Education",
+        "Partner Counseling",
+        "Future Planning"
+      ],
+      price: "KES 500",
+      category: "family_planning",
+      details: {
+        counseling: {
+          duration: "30 minutes",
+          requirements: ["Educational materials", "Contraceptive samples", "Privacy"],
+          benefits: "Informed decision making for reproductive health"
+        }
+      }
     }
   ];
 
@@ -183,6 +303,16 @@ export default function Services() {
               Clinical Services
             </button>
             <button
+              onClick={() => setActiveTab('family-planning')}
+              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                activeTab === 'family-planning'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-600 hover:text-blue-600'
+              }`}
+            >
+              Family Planning
+            </button>
+            <button
               onClick={() => setActiveTab('pharmacy')}
               className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
                 activeTab === 'pharmacy'
@@ -211,7 +341,7 @@ export default function Services() {
 
             {/* Default Services */}
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {clinicServices.map((service, index) => {
+              {clinicServices.filter(service => service.category !== 'family_planning').map((service, index) => {
                 const Icon = service.icon;
                 return (
                   <div 
@@ -280,6 +410,134 @@ export default function Services() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Family Planning Services */}
+        {activeTab === 'family-planning' && (
+          <div className="space-y-12">
+            {/* Family Planning Header */}
+            <div className="text-center space-y-4">
+              <div className="flex items-center justify-center space-x-3 mb-4">
+                <Users className="h-8 w-8 text-pink-600" />
+                <h3 className="text-3xl font-bold text-gray-900">Family Planning Services</h3>
+              </div>
+              <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+                Comprehensive reproductive health services designed to help you make informed decisions 
+                about your reproductive future. Our experienced healthcare providers offer personalized 
+                care and support for all your family planning needs.
+              </p>
+            </div>
+
+            {/* Family Planning Services Grid */}
+            <div className="grid md:grid-cols-2 gap-8">
+              {familyPlanningServices.map((service, index) => {
+                const Icon = service.icon;
+                return (
+                  <div 
+                    key={index} 
+                    className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 group border-l-4 border-pink-500"
+                  >
+                    <div className="space-y-6">
+                      {/* Icon and Title */}
+                      <div className="flex items-start space-x-4">
+                        <div className="bg-pink-100 group-hover:bg-pink-600 w-16 h-16 rounded-xl flex items-center justify-center transition-colors duration-300 flex-shrink-0">
+                          <Icon className="h-8 w-8 text-pink-600 group-hover:text-white transition-colors duration-300" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-2xl font-bold text-gray-900 group-hover:text-pink-600 transition-colors duration-300">
+                            {service.title}
+                          </h3>
+                          <p className="text-gray-600 leading-relaxed mt-2">
+                            {service.description}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Pricing */}
+                      <div className="bg-pink-50 px-4 py-3 rounded-lg">
+                        <p className="text-pink-700 font-semibold">{service.price}</p>
+                      </div>
+
+                      {/* Features */}
+                      <div className="space-y-2">
+                        <h4 className="font-semibold text-gray-900">Services Include:</h4>
+                        {service.features.map((feature, featureIndex) => (
+                          <div key={featureIndex} className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
+                            <span className="text-sm text-gray-700">{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Service Details */}
+                      {service.details && (
+                        <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                          <h4 className="font-semibold text-gray-900">Service Details:</h4>
+                          {Object.entries(service.details).map(([key, detail]) => (
+                            <div key={key} className="text-sm">
+                              <p className="font-medium text-gray-800 capitalize">{key.replace(/([A-Z])/g, ' $1')}:</p>
+                              <ul className="ml-4 space-y-1 text-gray-600">
+                                {detail.duration && <li>• Duration: {detail.duration}</li>}
+                                {detail.effectiveness && <li>• Effectiveness: {detail.effectiveness}</li>}
+                                {detail.benefits && <li>• Benefits: {detail.benefits}</li>}
+                                {detail.notes && <li>• Notes: {detail.notes}</li>}
+                              </ul>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* CTA */}
+                      <button className="w-full bg-pink-600 hover:bg-pink-700 text-white py-3 rounded-lg font-medium transition-all duration-300 group-hover:shadow-lg">
+                        Schedule Consultation
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Family Planning Information */}
+            <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-2xl p-8">
+              <div className="text-center space-y-6">
+                <h3 className="text-2xl font-bold text-gray-900">Why Choose Our Family Planning Services?</h3>
+                <div className="grid md:grid-cols-3 gap-6">
+                  <div className="space-y-3">
+                    <div className="bg-pink-100 w-12 h-12 rounded-lg flex items-center justify-center mx-auto">
+                      <Shield className="h-6 w-6 text-pink-600" />
+                    </div>
+                    <h4 className="font-semibold text-gray-900">Safe & Effective</h4>
+                    <p className="text-gray-600 text-sm">
+                      All procedures performed by qualified healthcare professionals using sterile techniques and quality materials.
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="bg-pink-100 w-12 h-12 rounded-lg flex items-center justify-center mx-auto">
+                      <Heart className="h-6 w-6 text-pink-600" />
+                    </div>
+                    <h4 className="font-semibold text-gray-900">Personalized Care</h4>
+                    <p className="text-gray-600 text-sm">
+                      Comprehensive counseling to help you choose the best contraceptive method for your lifestyle and needs.
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="bg-pink-100 w-12 h-12 rounded-lg flex items-center justify-center mx-auto">
+                      <Users className="h-6 w-6 text-pink-600" />
+                    </div>
+                    <h4 className="font-semibold text-gray-900">Ongoing Support</h4>
+                    <p className="text-gray-600 text-sm">
+                      Follow-up care and support throughout your family planning journey with regular check-ups.
+                    </p>
+                  </div>
+                </div>
+                <div className="pt-4">
+                  <button className="bg-pink-600 hover:bg-pink-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors">
+                    Book Family Planning Consultation
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

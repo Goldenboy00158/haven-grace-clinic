@@ -70,5 +70,62 @@ export const services: Service[] = [
     price: 5000,
     category: "procedures",
     description: "Minor surgical procedures and interventions"
+  },
+  // Family Planning Services
+  {
+    id: "11",
+    name: "Contraceptive Implant Insertion",
+    price: 2500,
+    category: "family_planning",
+    description: "Insertion of subdermal contraceptive implant (3-year protection)"
+  },
+  {
+    id: "12",
+    name: "Contraceptive Implant Removal",
+    price: 1500,
+    category: "family_planning",
+    description: "Safe removal of contraceptive implant"
+  },
+  {
+    id: "13",
+    name: "IUD Insertion - Copper T",
+    price: 3000,
+    category: "family_planning",
+    description: "Insertion of Copper T IUD (10-year protection)"
+  },
+  {
+    id: "14",
+    name: "IUD Insertion - Hormonal",
+    price: 8000,
+    category: "family_planning",
+    description: "Insertion of hormonal IUD (5-year protection)"
+  },
+  {
+    id: "15",
+    name: "IUD Removal",
+    price: 1200,
+    category: "family_planning",
+    description: "Safe removal of intrauterine device"
+  },
+  {
+    id: "16",
+    name: "Family Planning Counseling",
+    price: 500,
+    category: "family_planning",
+    description: "Comprehensive contraceptive counseling and education"
+  },
+  {
+    id: "17",
+    name: "Emergency Contraception",
+    price: 300,
+    category: "family_planning",
+    description: "Emergency contraceptive pill administration and counseling"
+  },
+  {
+    id: "18",
+    name: "Depo-Provera Injection",
+    price: 800,
+    category: "family_planning",
+    description: "3-monthly contraceptive injection"
   }
 ];

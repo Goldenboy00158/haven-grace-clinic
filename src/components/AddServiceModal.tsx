@@ -73,6 +73,7 @@ export default function AddServiceModal({ onSave, onClose }: AddServiceModalProp
               <option value="diagnostics">Diagnostics</option>
               <option value="procedures">Procedures</option>
               <option value="consultations">Consultations</option>
+              <option value="family_planning">Family Planning</option>
             </select>
           </div>
 
