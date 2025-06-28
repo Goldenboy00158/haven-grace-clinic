@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Edit, Trash2, Activity, Heart, Ban as Bandage, Scissors, Droplets, Stethoscope, Eye, Save, X } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Activity, Heart, Ban as Bandage, Scissors, Droplets, Stethoscope, Eye, Save, X, Users } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Service } from '../types';
 
@@ -107,6 +107,84 @@ export default function ServicesManagement() {
       severity: "severe",
       duration: 60,
       requirements: ["Surgical instruments", "Local anesthetic", "Drainage materials", "Antibiotics", "Surgical sutures"]
+    },
+    // NEW FAMILY PLANNING SERVICES
+    {
+      id: "11",
+      name: "Contraceptive Implant Insertion",
+      price: 2500,
+      category: "family_planning",
+      description: "Insertion of subdermal contraceptive implant (3-year protection)",
+      severity: "moderate",
+      duration: 20,
+      requirements: ["Contraceptive implant", "Local anesthetic", "Sterile insertion kit", "Antiseptic", "Sterile gloves"]
+    },
+    {
+      id: "12",
+      name: "Contraceptive Implant Removal",
+      price: 1500,
+      category: "family_planning",
+      description: "Safe removal of contraceptive implant",
+      severity: "moderate",
+      duration: 15,
+      requirements: ["Local anesthetic", "Surgical instruments", "Antiseptic", "Sterile gloves", "Pressure bandage"]
+    },
+    {
+      id: "13",
+      name: "IUD Insertion - Copper T",
+      price: 3000,
+      category: "family_planning",
+      description: "Insertion of Copper T IUD (10-year protection)",
+      severity: "moderate",
+      duration: 25,
+      requirements: ["Copper T IUD", "Speculum", "Tenaculum", "Uterine sound", "Antiseptic", "Pain medication"]
+    },
+    {
+      id: "14",
+      name: "IUD Insertion - Hormonal (Mirena)",
+      price: 8000,
+      category: "family_planning",
+      description: "Insertion of hormonal IUD (5-year protection)",
+      severity: "moderate",
+      duration: 25,
+      requirements: ["Hormonal IUD", "Speculum", "Tenaculum", "Uterine sound", "Antiseptic", "Pain medication"]
+    },
+    {
+      id: "15",
+      name: "IUD Removal",
+      price: 1200,
+      category: "family_planning",
+      description: "Safe removal of intrauterine device",
+      severity: "mild",
+      duration: 15,
+      requirements: ["Speculum", "IUD removal forceps", "Antiseptic", "Pain medication"]
+    },
+    {
+      id: "16",
+      name: "Family Planning Counseling",
+      price: 500,
+      category: "family_planning",
+      description: "Comprehensive contraceptive counseling and education",
+      duration: 30,
+      requirements: ["Educational materials", "Contraceptive samples", "Privacy"]
+    },
+    {
+      id: "17",
+      name: "Emergency Contraception",
+      price: 300,
+      category: "family_planning",
+      description: "Emergency contraceptive pill administration and counseling",
+      duration: 10,
+      requirements: ["Emergency contraceptive pill", "Patient education materials"]
+    },
+    {
+      id: "18",
+      name: "Depo-Provera Injection",
+      price: 800,
+      category: "family_planning",
+      description: "3-monthly contraceptive injection",
+      duration: 10,
+      requirements: ["Depo-Provera injection", "Syringe", "Antiseptic", "Cotton swab"]
     }
   ]);
 
@@ -124,7 +202,7 @@ export default function ServicesManagement() {
     requirements: []
   });
 
-  const categories = ['diagnostics', 'procedures', 'consultations'];
+  const categories = ['diagnostics', 'procedures', 'family_planning', 'consultations'];
   const severityLevels = ['mild', 'moderate', 'severe'];
 
   const filteredServices = useMemo(() => {
@@ -136,7 +214,8 @@ export default function ServicesManagement() {
     });
   }, [services, searchTerm, selectedCategory]);
 
-  const getServiceIcon = (serviceName: string) => {
+  const getServiceIcon = (serviceName: string, category: string) => {
+    if (category === 'family_planning') return Users;
     if (serviceName.toLowerCase().includes('blood pressure') || serviceName.toLowerCase().includes('bp')) return Heart;
     if (serviceName.toLowerCase().includes('blood sugar') || serviceName.toLowerCase().includes('rbs')) return Droplets;
     if (serviceName.toLowerCase().includes('wound')) return Bandage;
@@ -150,6 +229,16 @@ export default function ServicesManagement() {
       case 'mild': return 'bg-green-100 text-green-800';
       case 'moderate': return 'bg-yellow-100 text-yellow-800';
       case 'severe': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'diagnostics': return 'bg-blue-100 text-blue-800';
+      case 'procedures': return 'bg-purple-100 text-purple-800';
+      case 'family_planning': return 'bg-pink-100 text-pink-800';
+      case 'consultations': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -224,13 +313,29 @@ export default function ServicesManagement() {
     }));
   };
 
+  // Group services by category for better organization
+  const servicesByCategory = filteredServices.reduce((acc, service) => {
+    if (!acc[service.category]) {
+      acc[service.category] = [];
+    }
+    acc[service.category].push(service);
+    return acc;
+  }, {} as Record<string, ClinicalService[]>);
+
+  const categoryNames = {
+    diagnostics: 'Diagnostic Services',
+    procedures: 'Medical Procedures',
+    family_planning: 'Family Planning Services',
+    consultations: 'Consultations'
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Clinical Services Management</h2>
-          <p className="text-gray-600">Manage clinical procedures and diagnostic services</p>
+          <p className="text-gray-600">Manage clinical procedures, diagnostics, and family planning services</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
@@ -262,82 +367,105 @@ export default function ServicesManagement() {
             <option value="">All Categories</option>
             {categories.map(category => (
               <option key={category} value={category}>
-                {category.charAt(0).toUpperCase() + category.slice(1)}
+                {categoryNames[category as keyof typeof categoryNames] || category.charAt(0).toUpperCase() + category.slice(1)}
               </option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Services Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredServices.map((service) => {
-          const Icon = getServiceIcon(service.name);
-          return (
-            <div key={service.id} className="bg-white rounded-xl p-6 shadow-sm border hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between mb-4">
-                <div className="bg-blue-100 p-3 rounded-lg">
-                  <Icon className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleEditService(service)}
-                    className="text-gray-400 hover:text-blue-600 transition-colors"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteService(service.id)}
-                    className="text-gray-400 hover:text-red-600 transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{service.name}</h3>
-                  <p className="text-gray-600 text-sm">{service.description}</p>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-xl font-bold text-blue-600">KES {service.price}</span>
-                  {service.severity && (
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(service.severity)}`}>
-                      {service.severity}
-                    </span>
-                  )}
-                </div>
-
-                {service.duration && (
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Activity className="h-4 w-4 mr-1" />
-                    <span>{service.duration} minutes</span>
+      {/* Services by Category */}
+      {Object.entries(servicesByCategory).map(([category, categoryServices]) => (
+        <div key={category} className="space-y-4">
+          <div className="flex items-center space-x-3">
+            <h3 className="text-xl font-semibold text-gray-900">
+              {categoryNames[category as keyof typeof categoryNames] || category}
+            </h3>
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getCategoryColor(category)}`}>
+              {categoryServices.length} services
+            </span>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {categoryServices.map((service) => {
+              const Icon = getServiceIcon(service.name, service.category);
+              return (
+                <div key={service.id} className="bg-white rounded-xl p-6 shadow-sm border hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`p-3 rounded-lg ${
+                      service.category === 'family_planning' ? 'bg-pink-100' :
+                      service.category === 'diagnostics' ? 'bg-blue-100' :
+                      service.category === 'procedures' ? 'bg-purple-100' :
+                      'bg-green-100'
+                    }`}>
+                      <Icon className={`h-6 w-6 ${
+                        service.category === 'family_planning' ? 'text-pink-600' :
+                        service.category === 'diagnostics' ? 'text-blue-600' :
+                        service.category === 'procedures' ? 'text-purple-600' :
+                        'text-green-600'
+                      }`} />
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEditService(service)}
+                        className="text-gray-400 hover:text-blue-600 transition-colors"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteService(service.id)}
+                        className="text-gray-400 hover:text-red-600 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
-                )}
 
-                {service.requirements && service.requirements.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-700">Requirements:</p>
-                    <ul className="text-xs text-gray-600 space-y-1">
-                      {service.requirements.slice(0, 3).map((req, index) => (
-                        <li key={index} className="flex items-center">
-                          <div className="w-1 h-1 bg-gray-400 rounded-full mr-2"></div>
-                          {req}
-                        </li>
-                      ))}
-                      {service.requirements.length > 3 && (
-                        <li className="text-gray-500">+{service.requirements.length - 3} more</li>
+                  <div className="space-y-3">
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900">{service.name}</h4>
+                      <p className="text-gray-600 text-sm">{service.description}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-xl font-bold text-blue-600">KES {service.price.toLocaleString()}</span>
+                      {service.severity && (
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(service.severity)}`}>
+                          {service.severity}
+                        </span>
                       )}
-                    </ul>
+                    </div>
+
+                    {service.duration && (
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Activity className="h-4 w-4 mr-1" />
+                        <span>{service.duration} minutes</span>
+                      </div>
+                    )}
+
+                    {service.requirements && service.requirements.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-gray-700">Requirements:</p>
+                        <ul className="text-xs text-gray-600 space-y-1">
+                          {service.requirements.slice(0, 3).map((req, index) => (
+                            <li key={index} className="flex items-center">
+                              <div className="w-1 h-1 bg-gray-400 rounded-full mr-2"></div>
+                              {req}
+                            </li>
+                          ))}
+                          {service.requirements.length > 3 && (
+                            <li className="text-gray-500">+{service.requirements.length - 3} more</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
 
       {filteredServices.length === 0 && (
         <div className="text-center py-12">
@@ -410,7 +538,7 @@ export default function ServicesManagement() {
                   >
                     {categories.map(category => (
                       <option key={category} value={category}>
-                        {category.charAt(0).toUpperCase() + category.slice(1)}
+                        {categoryNames[category as keyof typeof categoryNames] || category.charAt(0).toUpperCase() + category.slice(1)}
                       </option>
                     ))}
                   </select>
@@ -470,7 +598,7 @@ export default function ServicesManagement() {
                         type="text"
                         value={requirement}
                         onChange={(e) => updateRequirement(index, e.target.value)}
-                        placeholder="e.g., Sterile gauze, Antiseptic"
+                        placeholder="e.g., Contraceptive implant, Local anesthetic"
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                       <button

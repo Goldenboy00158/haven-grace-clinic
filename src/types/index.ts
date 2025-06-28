@@ -90,7 +90,7 @@ export interface Service {
   id: string;
   name: string;
   price: number;
-  category: 'general_medicine' | 'diagnostics' | 'procedures' | 'consultations';
+  category: 'general_medicine' | 'diagnostics' | 'procedures' | 'consultations' | 'family_planning';
   description: string;
 }
 
