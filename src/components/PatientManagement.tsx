@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Search, Plus, User, Phone, Calendar, FileText, Edit, Eye } from 'lucide-react';
+import { Search, Plus, User, Phone, Calendar, FileText, Edit, Eye, RotateCcw } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Patient, MedicalRecord, DispensedMedication, VitalSigns, Transaction } from '../types';
 import { medications } from '../data/medications';
 import { medicalShortForms, calculateTotalQuantity } from '../data/medicalShortForms';
 import EnhancedPatientView from './EnhancedPatientView';
+import PatientRevisit from './PatientRevisit';
 
 export default function PatientManagement() {
   const [patients, setPatients] = useLocalStorage<Patient[]>('clinic-patients', []);
@@ -12,6 +13,7 @@ export default function PatientManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddPatient, setShowAddPatient] = useState(false);
   const [viewingPatient, setViewingPatient] = useState<Patient | null>(null);
+  const [revisitPatient, setRevisitPatient] = useState<Patient | null>(null);
 
   const [newPatient, setNewPatient] = useState({
     name: '',
@@ -264,6 +266,13 @@ export default function PatientManagement() {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setRevisitPatient(patient)}
+                    className="bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    <span>Revisit</span>
+                  </button>
                   <button
                     onClick={() => setViewingPatient(patient)}
                     className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
@@ -685,6 +694,15 @@ export default function PatientManagement() {
           onClose={() => setViewingPatient(null)}
           onAddRecord={handleAddRecord}
           onSellToPatient={(items) => handleSellToPatient(viewingPatient.id, items)}
+        />
+      )}
+
+      {/* Patient Revisit Modal */}
+      {revisitPatient && (
+        <PatientRevisit
+          patient={revisitPatient}
+          onClose={() => setRevisitPatient(null)}
+          onAddRecord={handleAddRecord}
         />
       )}
     </div>

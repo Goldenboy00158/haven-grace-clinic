@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Package, Users, FileText, BarChart3, Menu, X, Settings as SettingsIcon } from 'lucide-react';
+import { Package, Users, FileText, BarChart3, Menu, X, Settings as SettingsIcon, Stethoscope } from 'lucide-react';
 import InventoryManagement from './components/InventoryManagement';
 import PatientManagement from './components/PatientManagement';
 import TransactionHistory from './components/TransactionHistory';
 import Dashboard from './components/Dashboard';
 import ShareableView from './components/ShareableView';
 import Settings from './components/Settings';
+import ServicesManagement from './components/ServicesManagement';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -25,6 +26,7 @@ function App() {
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
     { id: 'inventory', name: 'Inventory', icon: Package },
     { id: 'patients', name: 'Patients', icon: Users },
+    { id: 'services', name: 'Services', icon: Stethoscope },
     { id: 'transactions', name: 'Transactions', icon: FileText },
     { id: 'settings', name: 'Settings', icon: SettingsIcon },
   ];
@@ -42,6 +44,8 @@ function App() {
         return <InventoryManagement />;
       case 'patients':
         return <PatientManagement />;
+      case 'services':
+        return <ServicesManagement />;
       case 'transactions':
         return <TransactionHistory />;
       case 'settings':
