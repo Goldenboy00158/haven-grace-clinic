@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Edit, Trash2, Activity, Heart, Bandage, Scissors, Droplets, Stethoscope, Eye, Save, X } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Activity, Heart, Ban as Bandage, Scissors, Droplets, Stethoscope, Eye, Save, X } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Service } from '../types';
 
