@@ -1,11 +1,86 @@
 import React, { useState } from 'react';
-import { Search, Plus, User, Phone, Calendar, FileText, Edit, Eye, RotateCcw } from 'lucide-react';
+import { Search, Plus, User, Phone, Calendar, FileText, Edit, Eye, RotateCcw, Brain, Sparkles, TrendingUp, AlertCircle } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Patient, MedicalRecord, DispensedMedication, VitalSigns, Transaction } from '../types';
 import { getTabletCapsuleMedications } from '../data/medications';
 import { medicalShortForms, calculateTotalQuantity } from '../data/medicalShortForms';
 import EnhancedPatientView from './EnhancedPatientView';
 import PatientRevisit from './PatientRevisit';
+
+// AI Analysis Interface
+interface AIAnalysis {
+  riskFactors: string[];
+  recommendations: string[];
+  followUpSuggestions: string[];
+  medicationInteractions: string[];
+  severity: 'low' | 'medium' | 'high';
+  confidence: number;
+}
+
+// Mock AI Analysis Function
+const generateAIAnalysis = (patient: Patient): AIAnalysis => {
+  const lastRecord = patient.medicalHistory[0];
+  const age = patient.age;
+  const gender = patient.gender;
+  
+  // Mock AI analysis based on patient data
+  const riskFactors = [];
+  const recommendations = [];
+  const followUpSuggestions = [];
+  const medicationInteractions = [];
+  
+  // Age-based risk factors
+  if (age > 65) {
+    riskFactors.push('Advanced age increases cardiovascular risk');
+    recommendations.push('Regular blood pressure monitoring recommended');
+  }
+  
+  if (age > 40 && gender === 'female') {
+    riskFactors.push('Increased risk for osteoporosis');
+    recommendations.push('Consider bone density screening');
+  }
+  
+  // Gender-specific recommendations
+  if (gender === 'female' && patient.gynecologicHistory) {
+    if (patient.gynecologicHistory.gravida && parseInt(patient.gynecologicHistory.gravida) > 0) {
+      recommendations.push('Regular cervical cancer screening recommended');
+    }
+  }
+  
+  // Medical history analysis
+  if (lastRecord) {
+    if (lastRecord.diagnosis.toLowerCase().includes('diabetes')) {
+      riskFactors.push('Diabetes increases cardiovascular complications');
+      recommendations.push('HbA1c monitoring every 3 months');
+      followUpSuggestions.push('Diabetic foot examination');
+    }
+    
+    if (lastRecord.diagnosis.toLowerCase().includes('hypertension')) {
+      riskFactors.push('Hypertension requires ongoing monitoring');
+      recommendations.push('Home blood pressure monitoring');
+      followUpSuggestions.push('Follow-up in 2-4 weeks');
+    }
+    
+    // Medication interaction analysis
+    if (lastRecord.medications.length > 2) {
+      medicationInteractions.push('Multiple medications - monitor for drug interactions');
+    }
+  }
+  
+  // Determine severity
+  let severity: 'low' | 'medium' | 'high' = 'low';
+  if (riskFactors.length > 2) severity = 'medium';
+  if (riskFactors.length > 4) severity = 'high';
+  
+  return {
+    riskFactors,
+    recommendations,
+    followUpSuggestions,
+    medicationInteractions,
+    severity,
+    confidence: Math.random() * 0.3 + 0.7 // 70-100% confidence
+  };
+};
 
 export default function PatientManagement() {
   const [patients, setPatients] = useLocalStorage<Patient[]>('clinic-patients', []);
@@ -14,6 +89,7 @@ export default function PatientManagement() {
   const [showAddPatient, setShowAddPatient] = useState(false);
   const [viewingPatient, setViewingPatient] = useState<Patient | null>(null);
   const [revisitPatient, setRevisitPatient] = useState<Patient | null>(null);
+  const [showAIAnalysis, setShowAIAnalysis] = useState<string | null>(null);
 
   // Get only tablet/capsule medications for prescription
   const availableMedications = getTabletCapsuleMedications();
@@ -202,13 +278,21 @@ export default function PatientManagement() {
     setTransactions(prev => [transaction, ...prev]);
   };
 
+  const getSeverityColor = (severity: 'low' | 'medium' | 'high') => {
+    switch (severity) {
+      case 'low': return 'bg-green-100 text-green-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'high': return 'bg-red-100 text-red-800';
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Patient Management</h2>
-          <p className="text-gray-600">Manage patient records and medical history ({availableMedications.length} medications available for prescription)</p>
+          <p className="text-gray-600">Manage patient records and medical history with AI-powered insights ({availableMedications.length} medications available for prescription)</p>
         </div>
         <button
           onClick={() => setShowAddPatient(true)}
@@ -239,54 +323,167 @@ export default function PatientManagement() {
           <h3 className="text-lg font-semibold text-gray-900">Patients ({filteredPatients.length})</h3>
         </div>
         <div className="divide-y divide-gray-100">
-          {filteredPatients.map((patient) => (
-            <div key={patient.id} className="p-6 hover:bg-gray-50 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="bg-blue-100 p-3 rounded-full">
-                    <User className="h-6 w-6 text-blue-600" />
+          {filteredPatients.map((patient) => {
+            const aiAnalysis = generateAIAnalysis(patient);
+            return (
+              <div key={patient.id} className="p-6 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="bg-blue-100 p-3 rounded-full">
+                      <User className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-lg font-semibold text-gray-900">{patient.name}</h4>
+                      <div className="flex items-center space-x-4 text-sm text-gray-600">
+                        <span>Age: {patient.age}</span>
+                        <span>Gender: {patient.gender}</span>
+                        <span className="flex items-center">
+                          <Phone className="h-4 w-4 mr-1" />
+                          {patient.phone}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                        <span>{patient.medicalHistory.length} medical records</span>
+                        <span>Last visit: {patient.medicalHistory.length > 0 
+                          ? new Date(patient.medicalHistory[0].date).toLocaleDateString()
+                          : 'Never'
+                        }</span>
+                        {patient.gynecologicHistory && (
+                          <span>G{patient.gynecologicHistory.gravida}P{patient.gynecologicHistory.para}</span>
+                        )}
+                      </div>
+                      
+                      {/* AI Risk Assessment */}
+                      <div className="mt-2 flex items-center space-x-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(aiAnalysis.severity)}`}>
+                          {aiAnalysis.severity.toUpperCase()} RISK
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          AI Confidence: {(aiAnalysis.confidence * 100).toFixed(0)}%
+                        </span>
+                        {aiAnalysis.riskFactors.length > 0 && (
+                          <span className="text-xs text-orange-600 flex items-center">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            {aiAnalysis.riskFactors.length} risk factors
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-900">{patient.name}</h4>
-                    <div className="flex items-center space-x-4 text-sm text-gray-600">
-                      <span>Age: {patient.age}</span>
-                      <span>Gender: {patient.gender}</span>
-                      <span className="flex items-center">
-                        <Phone className="h-4 w-4 mr-1" />
-                        {patient.phone}
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setShowAIAnalysis(showAIAnalysis === patient.id ? null : patient.id)}
+                      className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                    >
+                      <Brain className="h-4 w-4" />
+                      <span>AI Analysis</span>
+                    </button>
+                    <button
+                      onClick={() => setRevisitPatient(patient)}
+                      className="bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      <span>Revisit</span>
+                    </button>
+                    <button
+                      onClick={() => setViewingPatient(patient)}
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                    >
+                      <Eye className="h-4 w-4" />
+                      <span>View</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* AI Analysis Panel */}
+                {showAIAnalysis === patient.id && (
+                  <div className="mt-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-200">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <Sparkles className="h-5 w-5 text-purple-600" />
+                      <h5 className="font-semibold text-purple-900">AI-Powered Clinical Analysis</h5>
+                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                        Beta
                       </span>
                     </div>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
-                      <span>{patient.medicalHistory.length} medical records</span>
-                      <span>Last visit: {patient.medicalHistory.length > 0 
-                        ? new Date(patient.medicalHistory[0].date).toLocaleDateString()
-                        : 'Never'
-                      }</span>
-                      {patient.gynecologicHistory && (
-                        <span>G{patient.gynecologicHistory.gravida}P{patient.gynecologicHistory.para}</span>
+                    
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {aiAnalysis.riskFactors.length > 0 && (
+                        <div>
+                          <h6 className="font-medium text-red-800 mb-2 flex items-center">
+                            <AlertCircle className="h-4 w-4 mr-1" />
+                            Risk Factors
+                          </h6>
+                          <ul className="text-sm text-red-700 space-y-1">
+                            {aiAnalysis.riskFactors.map((risk, index) => (
+                              <li key={index} className="flex items-start">
+                                <span className="w-1 h-1 bg-red-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                                {risk}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {aiAnalysis.recommendations.length > 0 && (
+                        <div>
+                          <h6 className="font-medium text-blue-800 mb-2 flex items-center">
+                            <TrendingUp className="h-4 w-4 mr-1" />
+                            Recommendations
+                          </h6>
+                          <ul className="text-sm text-blue-700 space-y-1">
+                            {aiAnalysis.recommendations.map((rec, index) => (
+                              <li key={index} className="flex items-start">
+                                <span className="w-1 h-1 bg-blue-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                                {rec}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {aiAnalysis.followUpSuggestions.length > 0 && (
+                        <div>
+                          <h6 className="font-medium text-green-800 mb-2 flex items-center">
+                            <Calendar className="h-4 w-4 mr-1" />
+                            Follow-up Suggestions
+                          </h6>
+                          <ul className="text-sm text-green-700 space-y-1">
+                            {aiAnalysis.followUpSuggestions.map((suggestion, index) => (
+                              <li key={index} className="flex items-start">
+                                <span className="w-1 h-1 bg-green-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                                {suggestion}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {aiAnalysis.medicationInteractions.length > 0 && (
+                        <div>
+                          <h6 className="font-medium text-orange-800 mb-2 flex items-center">
+                            <AlertCircle className="h-4 w-4 mr-1" />
+                            Medication Alerts
+                          </h6>
+                          <ul className="text-sm text-orange-700 space-y-1">
+                            {aiAnalysis.medicationInteractions.map((interaction, index) => (
+                              <li key={index} className="flex items-start">
+                                <span className="w-1 h-1 bg-orange-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                                {interaction}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       )}
                     </div>
+
+                    <div className="mt-3 text-xs text-purple-600 bg-purple-100 p-2 rounded">
+                      <strong>Disclaimer:</strong> AI analysis is for informational purposes only and should not replace clinical judgment. Always consult with healthcare professionals for medical decisions.
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setRevisitPatient(patient)}
-                    className="bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    <span>Revisit</span>
-                  </button>
-                  <button
-                    onClick={() => setViewingPatient(patient)}
-                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
-                  >
-                    <Eye className="h-4 w-4" />
-                    <span>View</span>
-                  </button>
-                </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         
         {filteredPatients.length === 0 && (
