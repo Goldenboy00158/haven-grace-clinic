@@ -7,34 +7,11 @@ import { medicalShortForms, calculateTotalQuantity } from '../data/medicalShortF
 import EnhancedPatientView from './EnhancedPatientView';
 import PatientRevisit from './PatientRevisit';
 import TCACalculator from './TCACalculator';
-
-interface ClinicalService {
-  id: string;
-  name: string;
-  price: number;
-  category: string;
-  description: string;
-  duration?: number;
-  requirements?: string[];
-}
-
-interface FamilyPlanningService {
-  id: string;
-  name: string;
-  price: number;
-  category: string;
-  description: string;
-  duration?: number;
-  effectiveness?: string;
-  protection?: string;
-  requirements?: string[];
-}
+import PatientServicesModal from './PatientServicesModal';
 
 export default function PatientManagement() {
   const [patients, setPatients] = useLocalStorage<Patient[]>('clinic-patients', []);
   const [transactions, setTransactions] = useLocalStorage<Transaction[]>('clinic-transactions', []);
-  const [clinicalServices] = useLocalStorage<ClinicalService[]>('clinic-clinical-services', []);
-  const [fpServices] = useLocalStorage<FamilyPlanningService[]>('clinic-fp-services', []);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddPatient, setShowAddPatient] = useState(false);
@@ -42,8 +19,6 @@ export default function PatientManagement() {
   const [revisitPatient, setRevisitPatient] = useState<Patient | null>(null);
   const [showTCACalculator, setShowTCACalculator] = useState<Patient | null>(null);
   const [showServicesModal, setShowServicesModal] = useState<Patient | null>(null);
-  const [selectedServices, setSelectedServices] = useState<any[]>([]);
-  const [serviceSearchTerm, setServiceSearchTerm] = useState('');
 
   // Get only tablet/capsule medications for prescription
   const availableMedications = getTabletCapsuleMedications();
@@ -83,21 +58,6 @@ export default function PatientManagement() {
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     patient.phone.includes(searchTerm)
   );
-
-  // Filter services based on patient gender and search term
-  const getAvailableServices = (patient: Patient) => {
-    const allServices = [...clinicalServices];
-    
-    // Add family planning services only for female patients
-    if (patient.gender === 'female') {
-      allServices.push(...fpServices);
-    }
-    
-    return allServices.filter(service =>
-      service.name.toLowerCase().includes(serviceSearchTerm.toLowerCase()) ||
-      service.description.toLowerCase().includes(serviceSearchTerm.toLowerCase())
-    );
-  };
 
   const addMedicationToRecord = () => {
     if (!selectedMedication || !medicationFrequency) return;
@@ -270,47 +230,7 @@ export default function PatientManagement() {
     setShowTCACalculator(null);
   };
 
-  const addServiceToSelection = (service: any) => {
-    const existingService = selectedServices.find(s => s.id === service.id);
-    if (!existingService) {
-      setSelectedServices(prev => [...prev, { ...service, quantity: 1 }]);
-    }
-  };
-
-  const removeServiceFromSelection = (serviceId: string) => {
-    setSelectedServices(prev => prev.filter(s => s.id !== serviceId));
-  };
-
-  const chargePatientForServices = () => {
-    if (!showServicesModal || selectedServices.length === 0) return;
-
-    const totalAmount = selectedServices.reduce((sum, service) => sum + (service.price * service.quantity), 0);
-    
-    const transaction: Transaction = {
-      id: Date.now().toString(),
-      type: 'patient',
-      patientId: showServicesModal.id,
-      patientName: showServicesModal.name,
-      items: selectedServices.map(service => ({
-        medicationId: service.id,
-        medicationName: service.name,
-        quantity: service.quantity,
-        dosage: '',
-        frequency: '',
-        duration: 0,
-        instructions: service.description,
-        price: service.price,
-        totalCost: service.price * service.quantity
-      })),
-      totalAmount,
-      date: new Date().toISOString(),
-      paymentMethod: 'cash',
-      status: 'completed'
-    };
-
-    setTransactions(prev => [transaction, ...prev]);
-    setSelectedServices([]);
-    setShowServicesModal(null);
+  const handleChargePatientForServices = (services: any[], totalAmount: number) => {
     alert(`Services charged successfully! Total: KES ${totalAmount.toLocaleString()}`);
   };
 
@@ -429,7 +349,9 @@ export default function PatientManagement() {
       {showAddPatient && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[95vh] overflow-y-auto p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Add New Patient with First Visit</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">
+              Add New Patient with First Visit
+            </h3>
             <form onSubmit={handleAddPatient} className="space-y-6">
               {/* Patient Information */}
               <div className="bg-gray-50 p-4 rounded-lg">
@@ -848,118 +770,11 @@ export default function PatientManagement() {
 
       {/* Services Modal */}
       {showServicesModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-gray-900">
-                Available Services for {showServicesModal.name}
-                {showServicesModal.gender === 'female' && (
-                  <span className="ml-2 text-sm bg-pink-100 text-pink-700 px-2 py-1 rounded-full">
-                    <Heart className="h-3 w-3 inline mr-1" />
-                    Family Planning Available
-                  </span>
-                )}
-              </h3>
-              <button
-                onClick={() => setShowServicesModal(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="grid lg:grid-cols-2 gap-6">
-              {/* Available Services */}
-              <div>
-                <div className="mb-4">
-                  <input
-                    type="text"
-                    placeholder="Search services..."
-                    value={serviceSearchTerm}
-                    onChange={(e) => setServiceSearchTerm(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <h4 className="font-medium text-gray-900 mb-3">Available Services</h4>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {getAvailableServices(showServicesModal).map((service) => (
-                    <div key={service.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
-                      <div>
-                        <p className="font-medium">{service.name}</p>
-                        <p className="text-sm text-gray-600">KES {service.price}</p>
-                        <p className="text-xs text-gray-500">{service.description}</p>
-                        {service.category?.includes('family_planning') && (
-                          <span className="text-xs bg-pink-100 text-pink-700 px-2 py-1 rounded-full mt-1 inline-block">
-                            Family Planning
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => addServiceToSelection(service)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Selected Services */}
-              <div>
-                <h4 className="font-medium text-gray-900 mb-3">Selected Services</h4>
-                {selectedServices.length > 0 ? (
-                  <div className="space-y-3">
-                    {selectedServices.map((service) => (
-                      <div key={service.id} className="p-3 border rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium">{service.name}</span>
-                          <button
-                            onClick={() => removeServiceFromSelection(service.id)}
-                            className="text-red-600 hover:text-red-800 text-sm"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          <p>Price: KES {service.price}</p>
-                          <p>{service.description}</p>
-                        </div>
-                      </div>
-                    ))}
-                    <div className="border-t pt-3">
-                      <div className="flex justify-between items-center">
-                        <span className="font-semibold">Total Amount:</span>
-                        <span className="text-xl font-bold text-green-600">
-                          KES {selectedServices.reduce((sum, service) => sum + service.price, 0).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-center py-8">No services selected</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex space-x-3 pt-6">
-              <button
-                onClick={chargePatientForServices}
-                disabled={selectedServices.length === 0}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-              >
-                <ShoppingCart className="h-4 w-4" />
-                <span>Charge Patient - KES {selectedServices.reduce((sum, service) => sum + service.price, 0).toLocaleString()}</span>
-              </button>
-              <button
-                onClick={() => setShowServicesModal(null)}
-                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 rounded-lg font-medium transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
+        <PatientServicesModal
+          patient={showServicesModal}
+          onClose={() => setShowServicesModal(null)}
+          onChargePatient={handleChargePatientForServices}
+        />
       )}
 
       {/* Enhanced Patient View Modal */}

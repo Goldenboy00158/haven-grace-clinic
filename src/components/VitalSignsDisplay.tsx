@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Thermometer, Activity, Wind, Weight, Droplets, AlertTriangle, CheckCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { Heart, Thermometer, Activity, Wind, Weight, Droplets, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Info } from 'lucide-react';
 import { VitalSigns } from '../types';
 import { getVitalSignsInterpretation, VitalSignAssessment } from '../utils/vitalSignsNormals';
 
@@ -142,6 +142,18 @@ export default function VitalSignsDisplay({
 
   return (
     <div className="space-y-4">
+      {/* Age-based Normal Range Info */}
+      {patientAge && showInterpretation && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="flex items-center space-x-2 text-blue-800">
+            <Info className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              Normal ranges adjusted for age: {patientAge} years old
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {vitalSignItems.filter(item => item.value).map((item) => {
           const Icon = item.icon;
@@ -182,6 +194,11 @@ export default function VitalSignsDisplay({
                     <div className="text-xs text-gray-600">
                       Normal range: {assessment.normalRange}
                     </div>
+                    {assessment.ageGroup && (
+                      <div className="text-xs text-blue-600">
+                        {assessment.ageGroup}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -214,6 +231,11 @@ export default function VitalSignsDisplay({
             <div className="text-xs text-gray-600">
               Normal range: {interpretations.bmi.normalRange}
             </div>
+            {interpretations.bmi.ageGroup && (
+              <div className="text-xs text-blue-600">
+                {interpretations.bmi.ageGroup}
+              </div>
+            )}
             <div className="text-xs text-gray-500">
               Calculated from: {vitalSigns.weight}kg, {patientHeight}cm
             </div>
@@ -227,6 +249,11 @@ export default function VitalSignsDisplay({
           <h4 className="font-medium text-blue-900 mb-2 flex items-center">
             <Activity className="h-4 w-4 mr-2" />
             Vital Signs Assessment
+            {patientAge && (
+              <span className="ml-2 text-sm text-blue-700">
+                (Age: {patientAge} years)
+              </span>
+            )}
           </h4>
           <div className="space-y-1 text-sm">
             {Object.entries(interpretations).map(([key, assessment]) => {
@@ -238,6 +265,9 @@ export default function VitalSignsDisplay({
                   <AlertTriangle className="h-3 w-3" />
                   <span>
                     {key === 'bmi' ? 'BMI' : key.charAt(0).toUpperCase() + key.slice(1)}: {assessment.message}
+                    {assessment.ageGroup && (
+                      <span className="text-xs ml-1">({assessment.ageGroup})</span>
+                    )}
                   </span>
                 </div>
               );
@@ -246,7 +276,7 @@ export default function VitalSignsDisplay({
             {Object.values(interpretations).every(a => a.status === 'normal') && (
               <div className="flex items-center space-x-2 text-green-600">
                 <CheckCircle className="h-3 w-3" />
-                <span>All vital signs within normal limits</span>
+                <span>All vital signs within normal limits for age</span>
               </div>
             )}
           </div>
