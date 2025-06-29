@@ -4,6 +4,7 @@ import { Patient, MedicalRecord, DispensedMedication, VitalSigns, Transaction } 
 import { getTabletCapsuleMedications } from '../data/medications';
 import { medicalShortForms, calculateTotalQuantity } from '../data/medicalShortForms';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import VitalSignsDisplay from './VitalSignsDisplay';
 
 interface EnhancedPatientViewProps {
   patient: Patient;
@@ -151,6 +152,17 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
     onSellToPatient(selectedItems);
     setSelectedItems([]);
     setShowSellModal(false);
+  };
+
+  // Get patient height for BMI calculation
+  const getPatientHeight = (): number | undefined => {
+    // Look for height in the most recent vital signs
+    for (const record of patient.medicalHistory) {
+      if (record.vitalSigns?.height) {
+        return parseFloat(record.vitalSigns.height);
+      }
+    }
+    return undefined;
   };
 
   return (
@@ -309,33 +321,13 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
                         {record.vitalSigns && Object.keys(record.vitalSigns).length > 0 && (
                           <div>
                             <h4 className="font-medium text-gray-900 mb-2">Vital Signs</h4>
-                            <div className="bg-white p-3 rounded border space-y-2">
-                              {record.vitalSigns.bloodPressure && (
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Blood Pressure:</span>
-                                  <span className="font-medium">{record.vitalSigns.bloodPressure} mmHg</span>
-                                </div>
-                              )}
-                
-                              {record.vitalSigns.temperature && (
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Temperature:</span>
-                                  <span className="font-medium">{record.vitalSigns.temperature}°C</span>
-                                </div>
-                              )}
-                              {record.vitalSigns.pulse && (
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Pulse:</span>
-                                  <span className="font-medium">{record.vitalSigns.pulse} bpm</span>
-                                </div>
-                              )}
-                              {record.vitalSigns.weight && (
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Weight:</span>
-                                  <span className="font-medium">{record.vitalSigns.weight} kg</span>
-                                </div>
-                              )}
-                            </div>
+                            <VitalSignsDisplay 
+                              vitalSigns={record.vitalSigns}
+                              patientAge={patient.age}
+                              patientGender={patient.gender}
+                              patientHeight={getPatientHeight()}
+                              compact={true}
+                            />
                           </div>
                         )}
 
@@ -394,7 +386,7 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
 
           {activeTab === 'vitals' && (
             <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-gray-900">Vital Signs History</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Vital Signs History with Normal Range Analysis</h3>
               {patient.medicalHistory
                 .filter(record => record.vitalSigns && Object.keys(record.vitalSigns).length > 0)
                 .map((record) => (
@@ -405,38 +397,22 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
                       </span>
                       <span className="text-sm text-gray-600">Dr. {record.doctorName}</span>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {record.vitalSigns?.bloodPressure && (
-                        <div className="text-center p-3 bg-red-50 rounded-lg">
-                          <Heart className="h-6 w-6 text-red-600 mx-auto mb-1" />
-                          <div className="text-sm text-gray-600">Blood Pressure</div>
-                          <div className="font-semibold text-red-600">{record.vitalSigns.bloodPressure}</div>
-                        </div>
-                      )}
-                      {record.vitalSigns?.temperature && (
-                        <div className="text-center p-3 bg-orange-50 rounded-lg">
-                          <Thermometer className="h-6 w-6 text-orange-600 mx-auto mb-1" />
-                          <div className="text-sm text-gray-600">Temperature</div>
-                          <div className="font-semibold text-orange-600">{record.vitalSigns.temperature}°C</div>
-                        </div>
-                      )}
-                      {record.vitalSigns?.weight && (
-                        <div className="text-center p-3 bg-blue-50 rounded-lg">
-                          <Weight className="h-6 w-6 text-blue-600 mx-auto mb-1" />
-                          <div className="text-sm text-gray-600">Weight</div>
-                          <div className="font-semibold text-blue-600">{record.vitalSigns.weight} kg</div>
-                        </div>
-                      )}
-                      {record.vitalSigns?.pulse && (
-                        <div className="text-center p-3 bg-green-50 rounded-lg">
-                          <Activity className="h-6 w-6 text-green-600 mx-auto mb-1" />
-                          <div className="text-sm text-gray-600">Pulse</div>
-                          <div className="font-semibold text-green-600">{record.vitalSigns.pulse} bpm</div>
-                        </div>
-                      )}
-                    </div>
+                    <VitalSignsDisplay 
+                      vitalSigns={record.vitalSigns}
+                      patientAge={patient.age}
+                      patientGender={patient.gender}
+                      patientHeight={getPatientHeight()}
+                      showInterpretation={true}
+                    />
                   </div>
                 ))}
+              
+              {patient.medicalHistory.filter(record => record.vitalSigns && Object.keys(record.vitalSigns).length > 0).length === 0 && (
+                <div className="text-center py-8">
+                  <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No vital signs recorded yet.</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -543,7 +519,60 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Height (cm)</label>
+                      <input
+                        type="text"
+                        placeholder="170"
+                        value={newRecord.vitalSigns.height || ''}
+                        onChange={(e) => setNewRecord(prev => ({
+                          ...prev,
+                          vitalSigns: { ...prev.vitalSigns, height: e.target.value }
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Respiratory Rate (/min)</label>
+                      <input
+                        type="text"
+                        placeholder="16"
+                        value={newRecord.vitalSigns.respiratoryRate || ''}
+                        onChange={(e) => setNewRecord(prev => ({
+                          ...prev,
+                          vitalSigns: { ...prev.vitalSigns, respiratoryRate: e.target.value }
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Oxygen Saturation (%)</label>
+                      <input
+                        type="text"
+                        placeholder="98"
+                        value={newRecord.vitalSigns.oxygenSaturation || ''}
+                        onChange={(e) => setNewRecord(prev => ({
+                          ...prev,
+                          vitalSigns: { ...prev.vitalSigns, oxygenSaturation: e.target.value }
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
                   </div>
+                  
+                  {/* Live Vital Signs Assessment */}
+                  {Object.keys(newRecord.vitalSigns).length > 0 && (
+                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                      <h5 className="font-medium text-gray-900 mb-2">Live Assessment:</h5>
+                      <VitalSignsDisplay 
+                        vitalSigns={newRecord.vitalSigns}
+                        patientAge={patient.age}
+                        patientGender={patient.gender}
+                        patientHeight={newRecord.vitalSigns.height ? parseFloat(newRecord.vitalSigns.height) : getPatientHeight()}
+                        compact={true}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Clinical Information */}
