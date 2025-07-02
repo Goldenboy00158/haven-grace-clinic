@@ -17,7 +17,7 @@ export default function AIAssistant() {
       timestamp: new Date()
     }
   ]);
-  const [inputMessage, setInputMessage] = useState('');
+  const [inputMessage, setInputMessage] = useState('true');
   const [isTyping, setIsTyping] = useState(true);
 
   const quickActions = [
