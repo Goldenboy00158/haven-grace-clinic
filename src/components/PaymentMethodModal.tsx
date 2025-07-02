@@ -110,7 +110,7 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
           </div>
 
           {/* M-Pesa Details */}
-          {selectedMethod === 'mpesa' && (
+          {selectedMethod === 'mpesa' &pochi& (
             <div className="space-y-4 bg-green-50 p-4 rounded-lg">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">M-Pesa Number</label>
@@ -187,4 +187,4 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
       </div>
     </div>
   );
-}</parameter>
+}
