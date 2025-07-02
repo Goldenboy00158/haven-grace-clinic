@@ -154,4 +154,4 @@ export default function DiscountModal({ item, onApplyDiscount, onClose }: Discou
       </div>
     </div>
   );
-}</parameter>
+}
