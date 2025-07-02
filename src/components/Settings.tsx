@@ -203,7 +203,7 @@ export default function Settings() {
                 type="number"
                 min="1"
                 value={tempSettings.lowStockThreshold}
-                onChange={(e) => setTempSettings(prev => ({ ...prev, lowStockThreshold: parseInt(e.target.value) || 15 }))}
+                onChange={(e) => setTempSettings(prev => ({ ...prev, lowStockThreshold: parseInt(e.target.value) || 5 }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -213,7 +213,7 @@ export default function Settings() {
                 type="number"
                 min="1"
                 value={tempSettings.criticalStockThreshold}
-                onChange={(e) => setTempSettings(prev => ({ ...prev, criticalStockThreshold: parseInt(e.target.value) || 5 }))}
+                onChange={(e) => setTempSettings(prev => ({ ...prev, criticalStockThreshold: parseInt(e.target.value) || 2 }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
