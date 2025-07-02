@@ -910,4 +910,4 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
       </div>
     </div>
   );
-}</parameter>
+}
