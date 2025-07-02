@@ -30,4 +30,4 @@ export default function ReviewModeToggle({ isReviewMode, onToggle, className = '
       )}
     </button>
   );
-}</parameter>
+}
