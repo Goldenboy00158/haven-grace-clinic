@@ -809,4 +809,4 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
       )}
     </div>
   );
-}</parameter>
+}
