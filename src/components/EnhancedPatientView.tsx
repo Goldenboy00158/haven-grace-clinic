@@ -11,9 +11,10 @@ interface EnhancedPatientViewProps {
   onClose: () => void;
   onAddRecord: (record: Omit<MedicalRecord, 'id'>) => void;
   onSellToPatient: (items: DispensedMedication[]) => void;
+  isReviewMode?: boolean;
 }
 
-export default function EnhancedPatientView({ patient, onClose, onAddRecord, onSellToPatient }: EnhancedPatientViewProps) {
+export default function EnhancedPatientView({ patient, onClose, onAddRecord, onSellToPatient, isReviewMode = false }: EnhancedPatientViewProps) {
   const [activeTab, setActiveTab] = useState('history');
   const [showAddRecord, setShowAddRecord] = useState(false);
   const [showSellModal, setShowSellModal] = useState(false);
@@ -191,20 +192,24 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
               </div>
             </div>
             <div className="flex space-x-2">
-              <button
-                onClick={() => setShowSellModal(true)}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-              >
-                <ShoppingCart className="h-4 w-4" />
-                <span>Sell Items</span>
-              </button>
-              <button
-                onClick={() => setShowAddRecord(true)}
-                className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Record</span>
-              </button>
+              {!isReviewMode && (
+                <>
+                  <button
+                    onClick={() => setShowSellModal(true)}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                    <span>Sell Items</span>
+                  </button>
+                  <button
+                    onClick={() => setShowAddRecord(true)}
+                    className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Add Record</span>
+                  </button>
+                </>
+              )}
               <button
                 onClick={onClose}
                 className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-medium transition-colors"
@@ -440,7 +445,7 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
         </div>
 
         {/* Add Record Modal */}
-        {showAddRecord && (
+        {showAddRecord && !isReviewMode && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-60">
             <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
               <h3 className="text-xl font-semibold text-gray-900 mb-6">
@@ -798,7 +803,7 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
         )}
 
         {/* Sell Items Modal */}
-        {showSellModal && (
+        {showSellModal && !isReviewMode && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-60">
             <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
               <h3 className="text-xl font-semibold text-gray-900 mb-6">
@@ -905,4 +910,4 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
       </div>
     </div>
   );
-}
+}</parameter>

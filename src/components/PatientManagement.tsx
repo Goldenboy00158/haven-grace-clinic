@@ -7,9 +7,13 @@ import { medicalShortForms, calculateTotalQuantity } from '../data/medicalShortF
 import EnhancedPatientView from './EnhancedPatientView';
 import PatientRevisit from './PatientRevisit';
 import TCACalculator from './TCACalculator';
-import PatientServicesModal from './PatientServicesModal';
+import EnhancedPatientServicesModal from './EnhancedPatientServicesModal';
 
-export default function PatientManagement() {
+interface PatientManagementProps {
+  isReviewMode?: boolean;
+}
+
+export default function PatientManagement({ isReviewMode = false }: PatientManagementProps) {
   const [patients, setPatients] = useLocalStorage<Patient[]>('clinic-patients', []);
   const [transactions, setTransactions] = useLocalStorage<Transaction[]>('clinic-transactions', []);
   
@@ -230,8 +234,9 @@ export default function PatientManagement() {
     setShowTCACalculator(null);
   };
 
-  const handleChargePatientForServices = (services: any[], totalAmount: number) => {
-    alert(`Services charged successfully! Total: KES ${totalAmount.toLocaleString()}`);
+  const handleChargePatientForServices = (services: any[], totalAmount: number, paymentMethod: string, transactionId?: string) => {
+    alert(`Services charged successfully! Total: KES ${totalAmount.toLocaleString()} via ${paymentMethod}${transactionId ? ` (ID: ${transactionId})` : ''}`);
+    setShowServicesModal(null);
   };
 
   return (
@@ -242,13 +247,15 @@ export default function PatientManagement() {
           <h2 className="text-2xl font-bold text-gray-900">Patient Management</h2>
           <p className="text-gray-600">Manage patient records and medical history ({availableMedications.length} medications available for prescription)</p>
         </div>
-        <button
-          onClick={() => setShowAddPatient(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Add Patient</span>
-        </button>
+        {!isReviewMode && (
+          <button
+            onClick={() => setShowAddPatient(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Patient</span>
+          </button>
+        )}
       </div>
 
       {/* Search */}
@@ -301,7 +308,7 @@ export default function PatientManagement() {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  {patient.gender === 'female' && (
+                  {patient.gender === 'female' && !isReviewMode && (
                     <button
                       onClick={() => setShowTCACalculator(patient)}
                       className="bg-pink-100 hover:bg-pink-200 text-pink-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
@@ -310,20 +317,24 @@ export default function PatientManagement() {
                       <span>TCA</span>
                     </button>
                   )}
-                  <button
-                    onClick={() => setShowServicesModal(patient)}
-                    className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
-                  >
-                    <Stethoscope className="h-4 w-4" />
-                    <span>Services</span>
-                  </button>
-                  <button
-                    onClick={() => setRevisitPatient(patient)}
-                    className="bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    <span>Revisit</span>
-                  </button>
+                  {!isReviewMode && (
+                    <button
+                      onClick={() => setShowServicesModal(patient)}
+                      className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                    >
+                      <Stethoscope className="h-4 w-4" />
+                      <span>Services</span>
+                    </button>
+                  )}
+                  {!isReviewMode && (
+                    <button
+                      onClick={() => setRevisitPatient(patient)}
+                      className="bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      <span>Revisit</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => setViewingPatient(patient)}
                     className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
@@ -346,7 +357,7 @@ export default function PatientManagement() {
       </div>
 
       {/* Add Patient Modal */}
-      {showAddPatient && (
+      {showAddPatient && !isReviewMode && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[95vh] overflow-y-auto p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-6">
@@ -761,7 +772,7 @@ export default function PatientManagement() {
       )}
 
       {/* TCA Calculator Modal */}
-      {showTCACalculator && (
+      {showTCACalculator && !isReviewMode && (
         <TCACalculator
           onClose={() => setShowTCACalculator(null)}
           onSchedule={handleTCASchedule}
@@ -769,8 +780,8 @@ export default function PatientManagement() {
       )}
 
       {/* Services Modal */}
-      {showServicesModal && (
-        <PatientServicesModal
+      {showServicesModal && !isReviewMode && (
+        <EnhancedPatientServicesModal
           patient={showServicesModal}
           onClose={() => setShowServicesModal(null)}
           onChargePatient={handleChargePatientForServices}
@@ -784,11 +795,12 @@ export default function PatientManagement() {
           onClose={() => setViewingPatient(null)}
           onAddRecord={handleAddRecord}
           onSellToPatient={(items) => handleSellToPatient(viewingPatient.id, items)}
+          isReviewMode={isReviewMode}
         />
       )}
 
       {/* Patient Revisit Modal */}
-      {revisitPatient && (
+      {revisitPatient && !isReviewMode && (
         <PatientRevisit
           patient={revisitPatient}
           onClose={() => setRevisitPatient(null)}
@@ -797,4 +809,4 @@ export default function PatientManagement() {
       )}
     </div>
   );
-}
+}</parameter>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, Users, FileText, BarChart3, Menu, X, Settings as SettingsIcon, Stethoscope, Heart } from 'lucide-react';
+import { Package, Users, FileText, BarChart3, Menu, X, Settings as SettingsIcon, Stethoscope, Heart, Bot } from 'lucide-react';
 import InventoryManagement from './components/InventoryManagement';
 import PatientManagement from './components/PatientManagement';
 import TransactionHistory from './components/TransactionHistory';
@@ -8,10 +8,13 @@ import ShareableView from './components/ShareableView';
 import Settings from './components/Settings';
 import ServicesManagement from './components/ServicesManagement';
 import FamilyPlanningServices from './components/FamilyPlanningServices';
+import AIAssistant from './components/AIAssistant';
+import ReviewModeToggle from './components/ReviewModeToggle';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isReviewMode, setIsReviewMode] = useState(false);
 
   // Check if this is a shared view
   const urlPath = window.location.pathname;
@@ -30,6 +33,7 @@ function App() {
     { id: 'services', name: 'Services', icon: Stethoscope },
     { id: 'family-planning', name: 'Family Planning', icon: Heart },
     { id: 'transactions', name: 'Transactions', icon: FileText },
+    { id: 'ai-assistant', name: 'AI Assistant', icon: Bot },
     { id: 'settings', name: 'Settings', icon: SettingsIcon },
   ];
 
@@ -41,21 +45,23 @@ function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard onNavigate={handleNavigate} />;
+        return <Dashboard onNavigate={handleNavigate} isReviewMode={isReviewMode} />;
       case 'inventory':
-        return <InventoryManagement />;
+        return <InventoryManagement isReviewMode={isReviewMode} />;
       case 'patients':
-        return <PatientManagement />;
+        return <PatientManagement isReviewMode={isReviewMode} />;
       case 'services':
-        return <ServicesManagement />;
+        return <ServicesManagement isReviewMode={isReviewMode} />;
       case 'family-planning':
-        return <FamilyPlanningServices />;
+        return <FamilyPlanningServices isReviewMode={isReviewMode} />;
       case 'transactions':
-        return <TransactionHistory />;
+        return <TransactionHistory isReviewMode={isReviewMode} />;
+      case 'ai-assistant':
+        return <AIAssistant />;
       case 'settings':
-        return <Settings />;
+        return <Settings isReviewMode={isReviewMode} />;
       default:
-        return <Dashboard onNavigate={handleNavigate} />;
+        return <Dashboard onNavigate={handleNavigate} isReviewMode={isReviewMode} />;
     }
   };
 
@@ -77,13 +83,22 @@ function App() {
               </div>
             </div>
 
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100"
-            >
-              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
+            <div className="flex items-center space-x-4">
+              {/* Review Mode Toggle */}
+              <ReviewModeToggle 
+                isReviewMode={isReviewMode} 
+                onToggle={() => setIsReviewMode(!isReviewMode)}
+                className="hidden md:flex"
+              />
+
+              {/* Mobile menu button */}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+              >
+                {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -115,6 +130,15 @@ function App() {
           {/* Mobile Navigation */}
           {isMobileMenuOpen && (
             <div className="md:hidden bg-white rounded-lg shadow-lg mt-2">
+              {/* Review Mode Toggle for Mobile */}
+              <div className="p-4 border-b">
+                <ReviewModeToggle 
+                  isReviewMode={isReviewMode} 
+                  onToggle={() => setIsReviewMode(!isReviewMode)}
+                  className="w-full justify-center"
+                />
+              </div>
+              
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -148,4 +172,4 @@ function App() {
   );
 }
 
-export default App;
+export default App;</parameter>
