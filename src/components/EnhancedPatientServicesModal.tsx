@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, X, ShoppingCart, Heart, Stethoscope, Activity, Users, Pill, Shield, Baby, Filter, DollarSign, Percent, CreditCard, Smartphone } from 'lucide-react';
+import { Search, X, ShoppingCart, Heart, Stethoscope, Activity, Users, Pill, Shield, Baby, Filter, DollarSign, Percent, CreditCard, Smartphone, Clock, CheckCircle } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Patient, Transaction } from '../types';
 import DiscountModal from './DiscountModal';
@@ -38,6 +38,8 @@ interface ServiceItem {
   discountType?: 'percentage' | 'fixed';
   discountValue?: number;
   discountReason?: string;
+  category: string;
+  description: string;
 }
 
 interface EnhancedPatientServicesModalProps {
@@ -47,8 +49,172 @@ interface EnhancedPatientServicesModalProps {
 }
 
 export default function EnhancedPatientServicesModal({ patient, onClose, onChargePatient }: EnhancedPatientServicesModalProps) {
-  const [clinicalServices] = useLocalStorage<ClinicalService[]>('clinic-clinical-services', []);
-  const [fpServices] = useLocalStorage<FamilyPlanningService[]>('clinic-fp-services', []);
+  const [clinicalServices] = useLocalStorage<ClinicalService[]>('clinic-clinical-services', [
+    {
+      id: "1",
+      name: "Random Blood Sugar (RBS)",
+      price: 300,
+      category: "diagnostics",
+      description: "Point-of-care blood glucose testing",
+      duration: 5,
+      requirements: ["Glucometer", "Test strips", "Lancets"]
+    },
+    {
+      id: "2", 
+      name: "Blood Pressure Monitoring",
+      price: 200,
+      category: "diagnostics",
+      description: "Blood pressure measurement and assessment",
+      duration: 10,
+      requirements: ["Sphygmomanometer", "Stethoscope"]
+    },
+    {
+      id: "3",
+      name: "Wound Dressing - Minor",
+      price: 400,
+      category: "procedures",
+      description: "Basic wound cleaning and dressing for minor wounds",
+      severity: "mild",
+      duration: 15,
+      requirements: ["Sterile gauze", "Antiseptic", "Medical tape"]
+    },
+    {
+      id: "4",
+      name: "Wound Dressing - Moderate",
+      price: 600,
+      category: "procedures", 
+      description: "Comprehensive wound care for moderate wounds",
+      severity: "moderate",
+      duration: 25,
+      requirements: ["Sterile gauze", "Antiseptic", "Medical tape", "Saline solution"]
+    },
+    {
+      id: "5",
+      name: "Suturing - Simple",
+      price: 800,
+      category: "procedures",
+      description: "Simple suturing for minor lacerations",
+      severity: "mild",
+      duration: 20,
+      requirements: ["Suture material", "Needle holder", "Forceps", "Local anesthetic"]
+    },
+    {
+      id: "6",
+      name: "Suturing - Complex",
+      price: 1500,
+      category: "procedures",
+      description: "Complex suturing for deep or extensive lacerations",
+      severity: "severe",
+      duration: 45,
+      requirements: ["Suture material", "Needle holder", "Forceps", "Local anesthetic", "Surgical instruments"]
+    },
+    {
+      id: "7",
+      name: "Incision & Drainage (I&D)",
+      price: 1200,
+      category: "procedures",
+      description: "Incision and drainage of abscesses",
+      severity: "moderate",
+      duration: 30,
+      requirements: ["Surgical blade", "Local anesthetic", "Drainage materials", "Antibiotics"]
+    },
+    {
+      id: "8",
+      name: "General Consultation",
+      price: 500,
+      category: "consultations",
+      description: "Comprehensive medical examination and consultation",
+      duration: 30
+    }
+  ]);
+  
+  const [fpServices] = useLocalStorage<FamilyPlanningService[]>('clinic-fp-services', [
+    {
+      id: "fp1",
+      name: "Contraceptive Implant Insertion",
+      price: 2500,
+      category: "contraceptive_implant",
+      description: "Insertion of subdermal contraceptive implant (3-year protection)",
+      duration: 20,
+      effectiveness: "99.9% effective",
+      protection: "3 years",
+      requirements: ["Contraceptive implant", "Local anesthetic", "Sterile insertion kit", "Antiseptic"]
+    },
+    {
+      id: "fp2",
+      name: "Contraceptive Implant Removal",
+      price: 1500,
+      category: "contraceptive_implant",
+      description: "Safe removal of contraceptive implant",
+      duration: 15,
+      effectiveness: "Safe removal procedure",
+      requirements: ["Local anesthetic", "Surgical instruments", "Antiseptic"]
+    },
+    {
+      id: "fp3",
+      name: "IUD Insertion - Copper T",
+      price: 3000,
+      category: "iud",
+      description: "Insertion of Copper T IUD (10-year protection)",
+      duration: 25,
+      effectiveness: "99.2% effective",
+      protection: "10 years",
+      requirements: ["Copper T IUD", "Speculum", "Tenaculum", "Uterine sound", "Antiseptic"]
+    },
+    {
+      id: "fp4",
+      name: "IUD Insertion - Hormonal (Mirena)",
+      price: 8000,
+      category: "iud",
+      description: "Insertion of hormonal IUD (5-year protection)",
+      duration: 25,
+      effectiveness: "99.8% effective",
+      protection: "5 years",
+      requirements: ["Hormonal IUD", "Speculum", "Tenaculum", "Uterine sound", "Antiseptic"]
+    },
+    {
+      id: "fp5",
+      name: "IUD Removal",
+      price: 1200,
+      category: "iud",
+      description: "Safe removal of intrauterine device",
+      duration: 15,
+      effectiveness: "Safe removal procedure",
+      requirements: ["Speculum", "IUD removal forceps", "Antiseptic"]
+    },
+    {
+      id: "fp6",
+      name: "Depo-Provera Injection",
+      price: 800,
+      category: "injection",
+      description: "3-monthly contraceptive injection",
+      duration: 10,
+      effectiveness: "99% effective",
+      protection: "3 months",
+      requirements: ["Depo-Provera injection", "Syringe", "Antiseptic"]
+    },
+    {
+      id: "fp7",
+      name: "Emergency Contraception",
+      price: 300,
+      category: "emergency",
+      description: "Emergency contraceptive pill administration and counseling",
+      duration: 10,
+      effectiveness: "85% effective within 72 hours",
+      requirements: ["Emergency contraceptive pill", "Patient education materials"]
+    },
+    {
+      id: "fp8",
+      name: "Family Planning Counseling",
+      price: 500,
+      category: "counseling",
+      description: "Comprehensive contraceptive counseling and education",
+      duration: 30,
+      effectiveness: "Informed decision making",
+      requirements: ["Educational materials", "Contraceptive samples", "Privacy"]
+    }
+  ]);
+  
   const [transactions, setTransactions] = useLocalStorage<Transaction[]>('clinic-transactions', []);
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,24 +223,31 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
   const [showDiscountModal, setShowDiscountModal] = useState<ServiceItem | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [activeServiceTab, setActiveServiceTab] = useState<'clinical' | 'family_planning'>('clinical');
 
-  // Combine all services
+  // Combine all services based on patient gender and active tab
   const allServices = useMemo(() => {
-    const services = [...clinicalServices];
+    let services: any[] = [];
     
-    // Add family planning services only for female patients
-    if (patient.gender === 'female') {
-      services.push(...fpServices.map(fp => ({
-        ...fp,
-        category: 'family_planning',
-        isFamilyPlanning: true
-      })));
+    if (activeServiceTab === 'clinical') {
+      services = clinicalServices.map(service => ({
+        ...service,
+        serviceType: 'clinical'
+      }));
+    } else if (activeServiceTab === 'family_planning') {
+      // Only show family planning services for female patients
+      if (patient.gender === 'female') {
+        services = fpServices.map(fp => ({
+          ...fp,
+          serviceType: 'family_planning'
+        }));
+      }
     }
     
     return services;
-  }, [clinicalServices, fpServices, patient.gender]);
+  }, [clinicalServices, fpServices, patient.gender, activeServiceTab]);
 
-  // Get unique categories
+  // Get unique categories for current tab
   const categories = useMemo(() => {
     const cats = new Set(allServices.map(service => service.category));
     return Array.from(cats).sort();
@@ -97,30 +270,28 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
 
   const getServiceIcon = (category: string) => {
     switch (category) {
-      case 'family_planning': return Heart;
-      case 'diagnostics': return Activity;
-      case 'procedures': return Stethoscope;
-      case 'consultations': return Users;
       case 'contraceptive_implant': return Shield;
       case 'iud': return Heart;
       case 'injection': return Activity;
       case 'emergency': return Pill;
       case 'counseling': return Users;
+      case 'diagnostics': return Activity;
+      case 'procedures': return Stethoscope;
+      case 'consultations': return Users;
       default: return Stethoscope;
     }
   };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'family_planning': return 'bg-pink-100 text-pink-800';
-      case 'diagnostics': return 'bg-blue-100 text-blue-800';
-      case 'procedures': return 'bg-purple-100 text-purple-800';
-      case 'consultations': return 'bg-green-100 text-green-800';
       case 'contraceptive_implant': return 'bg-purple-100 text-purple-800';
       case 'iud': return 'bg-pink-100 text-pink-800';
       case 'injection': return 'bg-blue-100 text-blue-800';
       case 'emergency': return 'bg-red-100 text-red-800';
       case 'counseling': return 'bg-green-100 text-green-800';
+      case 'diagnostics': return 'bg-blue-100 text-blue-800';
+      case 'procedures': return 'bg-purple-100 text-purple-800';
+      case 'consultations': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -133,7 +304,9 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
         name: service.name,
         price: service.price,
         quantity: 1,
-        totalCost: service.price
+        totalCost: service.price,
+        category: service.category,
+        description: service.description
       }]);
     }
   };
@@ -202,7 +375,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
         dosage: '',
         frequency: '',
         duration: 0,
-        instructions: service.discountValue ? `Discount applied: ${service.discountType === 'percentage' ? service.discountValue + '%' : 'KES ' + service.discountValue}` : '',
+        instructions: service.description,
         price: service.price,
         totalCost: service.totalCost
       })),
@@ -249,6 +422,36 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
         </div>
 
         <div className="p-6">
+          {/* Service Type Tabs */}
+          <div className="mb-6">
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setActiveServiceTab('clinical')}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors flex-1 justify-center ${
+                  activeServiceTab === 'clinical'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-blue-600'
+                }`}
+              >
+                <Stethoscope className="h-4 w-4" />
+                <span>Clinical Services</span>
+              </button>
+              {patient.gender === 'female' && (
+                <button
+                  onClick={() => setActiveServiceTab('family_planning')}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors flex-1 justify-center ${
+                    activeServiceTab === 'family_planning'
+                      ? 'bg-pink-600 text-white shadow-md'
+                      : 'text-gray-600 hover:text-pink-600'
+                  }`}
+                >
+                  <Heart className="h-4 w-4" />
+                  <span>Family Planning</span>
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Search and Filters */}
           <div className="mb-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -311,7 +514,9 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Available Services */}
             <div className="lg:col-span-2">
-              <h4 className="font-medium text-gray-900 mb-4">Available Services</h4>
+              <h4 className="font-medium text-gray-900 mb-4">
+                Available {activeServiceTab === 'family_planning' ? 'Family Planning' : 'Clinical'} Services
+              </h4>
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {filteredServices.map((service) => {
                   const Icon = getServiceIcon(service.category);
@@ -340,7 +545,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                             </div>
                             {service.duration && (
                               <div className="flex items-center">
-                                <Activity className="h-4 w-4 mr-1" />
+                                <Clock className="h-4 w-4 mr-1" />
                                 <span>{service.duration} min</span>
                               </div>
                             )}
@@ -380,7 +585,12 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                 {filteredServices.length === 0 && (
                   <div className="text-center py-8">
                     <Stethoscope className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">No services found matching your criteria.</p>
+                    <p className="text-gray-500">
+                      {patient.gender !== 'female' && activeServiceTab === 'family_planning' 
+                        ? 'Family planning services are only available for female patients.'
+                        : 'No services found matching your criteria.'
+                      }
+                    </p>
                   </div>
                 )}
               </div>
