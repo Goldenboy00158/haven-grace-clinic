@@ -3,13 +3,13 @@ import { Bot, Calculator, Pill, Heart, Activity, Send, Lightbulb, FileText, User
 
 interface AIMessage {
   id: string;
-  type: 'user' | 'User';
+  type: 'user' | 'ai';
   content: string;
   timestamp: Date;
 }
 
 export default function AIAssistant() {
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<AIMessage[]>([
     {
       id: '1',
       type: 'ai',
@@ -17,8 +17,8 @@ export default function AIAssistant() {
       timestamp: new Date()
     }
   ]);
-  const [inputMessage, setInputMessage] = useState('true');
-  const [isTyping, setIsTyping] = useState(true);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
 
   const quickActions = [
     {
@@ -35,7 +35,7 @@ export default function AIAssistant() {
     },
     {
       icon: Heart,
-      title: 'BMI Calculator'include in patient page,
+      title: 'BMI Calculator',
       description: 'Calculate BMI and assess',
       prompt: 'Calculate BMI for a patient'
     },
@@ -200,7 +200,7 @@ Please specify the condition or procedure for detailed guidelines.`;
     }
 
     // Default response
-    return `I understand you're asking about "${user}". 
+    return `I understand you're asking about "${userMessage}". 
 
 I can help with:
 • **Medical Calculations** - Dosages, BMI, fluid requirements
