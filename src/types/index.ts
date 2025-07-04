@@ -122,3 +122,26 @@ export interface MedicalShortForm {
   description: string;
   timesPerDay: number;
 }
+
+// New Expense Types
+export interface DailyExpense {
+  id: string;
+  date: string;
+  category: 'utilities' | 'supplies' | 'food' | 'transport' | 'maintenance' | 'staff' | 'other';
+  description: string;
+  amount: number;
+  paymentMethod: 'cash' | 'mpesa' | 'bank' | 'card';
+  receipt?: string;
+  addedBy: string;
+  addedAt: string;
+  notes?: string;
+}
+
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  icon: string;
+  budgetLimit?: number;
+}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, Users, FileText, BarChart3, Menu, X, Settings as SettingsIcon, Stethoscope, Heart, Bot } from 'lucide-react';
+import { Package, Users, FileText, BarChart3, Menu, X, Settings as SettingsIcon, Stethoscope, Heart, Bot, TrendingDown } from 'lucide-react';
 import InventoryManagement from './components/InventoryManagement';
 import PatientManagement from './components/PatientManagement';
 import TransactionHistory from './components/TransactionHistory';
@@ -9,6 +9,7 @@ import Settings from './components/Settings';
 import ServicesManagement from './components/ServicesManagement';
 import FamilyPlanningServices from './components/FamilyPlanningServices';
 import AIAssistant from './components/AIAssistant';
+import DailyExpenses from './components/DailyExpenses';
 import ReviewModeToggle from './components/ReviewModeToggle';
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
     { id: 'services', name: 'Services', icon: Stethoscope },
     { id: 'family-planning', name: 'Family Planning', icon: Heart },
     { id: 'transactions', name: 'Transactions', icon: FileText },
+    { id: 'expenses', name: 'Daily Expenses', icon: TrendingDown },
     { id: 'ai-assistant', name: 'AI Assistant', icon: Bot },
     { id: 'settings', name: 'Settings', icon: SettingsIcon },
   ];
@@ -56,6 +58,8 @@ function App() {
         return <FamilyPlanningServices isReviewMode={isReviewMode} />;
       case 'transactions':
         return <TransactionHistory isReviewMode={isReviewMode} />;
+      case 'expenses':
+        return <DailyExpenses isReviewMode={isReviewMode} />;
       case 'ai-assistant':
         return <AIAssistant />;
       case 'settings':
@@ -107,14 +111,14 @@ function App() {
         {/* Navigation Tabs */}
         <div className="mb-8">
           {/* Desktop Navigation */}
-          <div className="hidden md:flex bg-white rounded-lg p-1 shadow-sm">
+          <div className="hidden md:flex bg-white rounded-lg p-1 shadow-sm overflow-x-auto">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                  className={`flex items-center space-x-2 px-4 py-3 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
                     activeTab === tab.id
                       ? 'bg-blue-600 text-white shadow-md'
                       : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'

@@ -1,18 +1,20 @@
 import React from 'react';
-import { Package, Users, TrendingUp, AlertTriangle, DollarSign, Activity, Share } from 'lucide-react';
+import { Package, Users, TrendingUp, AlertTriangle, DollarSign, Activity, Share, TrendingDown } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { medications } from '../data/medications';
-import { Patient, Transaction, Medication } from '../types';
+import { Patient, Transaction, Medication, DailyExpense } from '../types';
 import ShareLinkGenerator from './ShareLinkGenerator';
 
 interface DashboardProps {
   onNavigate?: (tab: string) => void;
+  isReviewMode?: boolean;
 }
 
-export default function Dashboard({ onNavigate }: DashboardProps) {
+export default function Dashboard({ onNavigate, isReviewMode }: DashboardProps) {
   const [medicationData] = useLocalStorage<Medication[]>('clinic-medications', medications);
   const [patients] = useLocalStorage<Patient[]>('clinic-patients', []);
   const [transactions] = useLocalStorage<Transaction[]>('clinic-transactions', []);
+  const [expenses] = useLocalStorage<DailyExpense[]>('clinic-expenses', []);
   const [showShareModal, setShowShareModal] = React.useState(false);
 
   // Calculate stats
@@ -41,6 +43,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     return transactionDate.getMonth() === thisMonth && transactionDate.getFullYear() === thisYear;
   }).reduce((sum, t) => sum + t.totalAmount, 0);
 
+  // Calculate today's expenses and net profit
+  const todayExpenses = expenses.filter(exp => {
+    const today = new Date().toDateString();
+    return new Date(exp.date).toDateString() === today;
+  }).reduce((sum, exp) => sum + exp.amount, 0);
+
+  const todayNetProfit = todayRevenue - todayExpenses;
+
   const stats = [
     {
       title: 'Total Medications',
@@ -65,6 +75,22 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       color: 'bg-purple-500',
       change: `${todayTransactions.length} transactions`,
       onClick: () => onNavigate?.('transactions')
+    },
+    {
+      title: 'Today\'s Expenses',
+      value: `KES ${todayExpenses.toLocaleString()}`,
+      icon: TrendingDown,
+      color: 'bg-red-500',
+      change: 'Operational costs',
+      onClick: () => onNavigate?.('expenses')
+    },
+    {
+      title: 'Today\'s Net Profit',
+      value: `KES ${todayNetProfit.toLocaleString()}`,
+      icon: TrendingUp,
+      color: todayNetProfit >= 0 ? 'bg-green-500' : 'bg-red-500',
+      change: todayNetProfit >= 0 ? 'Profitable day' : 'Loss today',
+      onClick: () => onNavigate?.('expenses')
     },
     {
       title: 'Monthly Revenue',
@@ -109,17 +135,19 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <h2 className="text-2xl font-bold text-gray-900">Dashboard Overview</h2>
           <p className="text-gray-600">Monitor your clinic's performance and key metrics</p>
         </div>
-        <button
-          onClick={() => setShowShareModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-        >
-          <Share className="h-4 w-4" />
-          <span>Share Dashboard</span>
-        </button>
+        {!isReviewMode && (
+          <button
+            onClick={() => setShowShareModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+          >
+            <Share className="h-4 w-4" />
+            <span>Share Dashboard</span>
+          </button>
+        )}
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -141,6 +169,39 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             </div>
           );
         })}
+      </div>
+
+      {/* Profit Analysis Card */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Today's Financial Summary</h3>
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="text-center p-4 bg-green-50 rounded-lg">
+            <DollarSign className="h-8 w-8 text-green-600 mx-auto mb-2" />
+            <p className="text-sm text-gray-600">Revenue</p>
+            <p className="text-2xl font-bold text-green-600">KES {todayRevenue.toLocaleString()}</p>
+          </div>
+          <div className="text-center p-4 bg-red-50 rounded-lg">
+            <TrendingDown className="h-8 w-8 text-red-600 mx-auto mb-2" />
+            <p className="text-sm text-gray-600">Expenses</p>
+            <p className="text-2xl font-bold text-red-600">KES {todayExpenses.toLocaleString()}</p>
+          </div>
+          <div className={`text-center p-4 rounded-lg ${todayNetProfit >= 0 ? 'bg-blue-50' : 'bg-orange-50'}`}>
+            <TrendingUp className={`h-8 w-8 mx-auto mb-2 ${todayNetProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`} />
+            <p className="text-sm text-gray-600">Net Profit</p>
+            <p className={`text-2xl font-bold ${todayNetProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+              KES {todayNetProfit.toLocaleString()}
+            </p>
+          </div>
+        </div>
+        {todayRevenue > 0 && (
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-600">
+              Profit Margin: <span className={`font-semibold ${todayNetProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {((todayNetProfit / todayRevenue) * 100).toFixed(1)}%
+              </span>
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
@@ -210,7 +271,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       {/* Quick Actions */}
       <div className="bg-white rounded-xl p-6 shadow-sm border">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <button 
             onClick={() => onNavigate?.('inventory')}
             className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg text-center transition-colors"
@@ -224,6 +285,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           >
             <Users className="h-8 w-8 text-green-600 mx-auto mb-2" />
             <p className="text-sm font-medium text-green-600">Patient Records</p>
+          </button>
+          <button 
+            onClick={() => onNavigate?.('expenses')}
+            className="p-4 bg-red-50 hover:bg-red-100 rounded-lg text-center transition-colors"
+          >
+            <TrendingDown className="h-8 w-8 text-red-600 mx-auto mb-2" />
+            <p className="text-sm font-medium text-red-600">Daily Expenses</p>
           </button>
           <button 
             onClick={() => onNavigate?.('inventory')}
