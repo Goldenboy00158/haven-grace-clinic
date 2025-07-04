@@ -14,7 +14,7 @@ export interface Medication {
 
 export interface GynecologicHistory {
   gravida?: string;
-  para?: string;
+  para?: string; // Now supports format like "1+2" for live births + miscarriages
   lastMenstrualPeriod?: string;
   contraceptiveHistory?: string;
   pregnancyHistory?: string;
@@ -48,6 +48,15 @@ export interface MedicalRecord {
   id: string;
   patientId: string;
   date: string;
+  // SMART format fields
+  chiefComplaint?: string;
+  historyOfPresentIllness?: string;
+  pastMedicalHistory?: string;
+  pastSurgicalHistory?: string;
+  familyHistory?: string;
+  socialHistory?: string;
+  reviewOfSystems?: string;
+  // Legacy fields (keeping for compatibility)
   symptoms: string;
   diagnosis: string;
   treatment: string;
@@ -144,4 +153,42 @@ export interface ExpenseCategory {
   color: string;
   icon: string;
   budgetLimit?: number;
+}
+
+// Analytics Types
+export interface DiagnosisAnalytics {
+  diagnosis: string;
+  count: number;
+  percentage: number;
+  trend: 'increasing' | 'decreasing' | 'stable';
+  lastMonth: number;
+  thisMonth: number;
+}
+
+export interface InventoryAnalytics {
+  medicationId: string;
+  medicationName: string;
+  totalSold: number;
+  revenue: number;
+  profitMargin: number;
+  trend: 'increasing' | 'decreasing' | 'stable';
+  category: string;
+  stockTurnover: number;
+}
+
+export interface AnalyticsData {
+  commonDiagnoses: DiagnosisAnalytics[];
+  topSellingMedications: InventoryAnalytics[];
+  revenueAnalytics: {
+    daily: number;
+    weekly: number;
+    monthly: number;
+    trends: { date: string; revenue: number; expenses: number }[];
+  };
+  patientAnalytics: {
+    totalPatients: number;
+    newPatientsThisMonth: number;
+    averageAge: number;
+    genderDistribution: { male: number; female: number; other: number };
+  };
 }

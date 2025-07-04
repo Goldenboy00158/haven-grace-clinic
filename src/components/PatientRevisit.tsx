@@ -30,6 +30,15 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
   const availableMedications = getTabletCapsuleMedications();
 
   const [newRecord, setNewRecord] = useState({
+    // SMART Format Fields
+    chiefComplaint: '',
+    historyOfPresentIllness: '',
+    pastMedicalHistory: '',
+    pastSurgicalHistory: '',
+    familyHistory: '',
+    socialHistory: '',
+    reviewOfSystems: '',
+    // Legacy fields for compatibility
     symptoms: '',
     diagnosis: '',
     treatment: '',
@@ -40,6 +49,15 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
     doctorName: '',
     analysisNotes: '',
     servicesProvided: [] as string[]
+  });
+
+  // Updated Gynecologic History for revisit
+  const [gynecologicUpdate, setGynecologicUpdate] = useState({
+    gravida: patient.gynecologicHistory?.gravida || '',
+    para: patient.gynecologicHistory?.para || '', // Now supports "1+2" format
+    lastMenstrualPeriod: '',
+    contraceptiveHistory: patient.gynecologicHistory?.contraceptiveHistory || '',
+    pregnancyHistory: patient.gynecologicHistory?.pregnancyHistory || ''
   });
 
   const [selectedMedication, setSelectedMedication] = useState('');
@@ -84,10 +102,22 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
   };
 
   const handleAddRecord = () => {
+    // Combine chief complaint and HPI into symptoms for legacy compatibility
+    const combinedSymptoms = `Chief Complaint: ${newRecord.chiefComplaint}\n\nHistory of Present Illness: ${newRecord.historyOfPresentIllness}`;
+    
     const record: Omit<MedicalRecord, 'id'> = {
       patientId: patient.id,
       date: new Date().toISOString(),
-      symptoms: newRecord.symptoms,
+      // SMART format fields
+      chiefComplaint: newRecord.chiefComplaint,
+      historyOfPresentIllness: newRecord.historyOfPresentIllness,
+      pastMedicalHistory: newRecord.pastMedicalHistory,
+      pastSurgicalHistory: newRecord.pastSurgicalHistory,
+      familyHistory: newRecord.familyHistory,
+      socialHistory: newRecord.socialHistory,
+      reviewOfSystems: newRecord.reviewOfSystems,
+      // Legacy fields
+      symptoms: combinedSymptoms || newRecord.symptoms,
       diagnosis: newRecord.diagnosis,
       treatment: newRecord.treatment,
       medications: newRecord.medications,
@@ -101,6 +131,13 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
     onAddRecord(record);
     setShowAddRecord(false);
     setNewRecord({
+      chiefComplaint: '',
+      historyOfPresentIllness: '',
+      pastMedicalHistory: '',
+      pastSurgicalHistory: '',
+      familyHistory: '',
+      socialHistory: '',
+      reviewOfSystems: '',
       symptoms: '',
       diagnosis: '',
       treatment: '',
@@ -178,300 +215,159 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
         {/* Previous Visit Summary */}
         {lastVisit && (
           <div className="p-6 bg-blue-50 border-b">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Previous Visit Summary</h3>
-            <div className="grid md:grid-cols-3 gap-4 text-sm">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Previous Visit Summary ({new Date(lastVisit.date).toLocaleDateString()})</h3>
+            <div className="grid md:grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="font-medium text-gray-700">Date:</span>
-                <span className="ml-2">{new Date(lastVisit.date).toLocaleDateString()}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Doctor:</span>
-                <span className="ml-2">{lastVisit.doctorName}</span>
+                <span className="font-medium text-gray-700">Chief Complaint:</span>
+                <span className="ml-2">{lastVisit.chiefComplaint || 'Not recorded'}</span>
               </div>
               <div>
                 <span className="font-medium text-gray-700">Diagnosis:</span>
                 <span className="ml-2">{lastVisit.diagnosis}</span>
               </div>
-            </div>
-            {lastVisit.followUpDate && (
-              <div className="mt-2 text-sm">
-                <span className="font-medium text-gray-700">Follow-up Due:</span>
-                <span className="ml-2 text-blue-600">{new Date(lastVisit.followUpDate).toLocaleDateString()}</span>
+              <div>
+                <span className="font-medium text-gray-700">Treatment:</span>
+                <span className="ml-2">{lastVisit.treatment}</span>
               </div>
-            )}
+              <div>
+                <span className="font-medium text-gray-700">Doctor:</span>
+                <span className="ml-2">{lastVisit.doctorName}</span>
+              </div>
+            </div>
           </div>
         )}
-
-        {/* Navigation Tabs */}
-        <div className="border-b">
-          <div className="flex">
-            {[
-              { id: 'history', name: 'Medical History', icon: FileText },
-              { id: 'vitals', name: 'Vital Signs Trends', icon: Activity },
-              { id: 'medications', name: 'Medication History', icon: Droplets }
-            ].map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 px-6 py-4 font-medium transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50'
-                      : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{tab.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6">
-          {activeTab === 'history' && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-gray-900">Complete Medical History</h3>
-              {patient.medicalHistory.length > 0 ? (
-                patient.medicalHistory.map((record, index) => (
-                  <div key={record.id} className="border border-gray-200 rounded-lg p-6 bg-gray-50">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <Calendar className="h-5 w-5 text-blue-600" />
-                        <span className="font-semibold text-gray-900">
-                          Visit #{patient.medicalHistory.length - index} - {new Date(record.date).toLocaleDateString()}
-                        </span>
-                        <span className="text-sm text-gray-600">Dr. {record.doctorName}</span>
-                      </div>
-                      {index === 0 && (
-                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                          Latest Visit
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-2">Chief Complaint & Symptoms</h4>
-                          <p className="text-gray-700 bg-white p-3 rounded border">{record.symptoms}</p>
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-2">Diagnosis</h4>
-                          <p className="text-gray-700 bg-white p-3 rounded border">{record.diagnosis}</p>
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-2">Treatment Plan</h4>
-                          <p className="text-gray-700 bg-white p-3 rounded border">{record.treatment}</p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        {record.vitalSigns && Object.keys(record.vitalSigns).length > 0 && (
-                          <div>
-                            <h4 className="font-medium text-gray-900 mb-2">Vital Signs</h4>
-                            <div className="bg-white p-3 rounded border space-y-2">
-                              {record.vitalSigns.bloodPressure && (
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Blood Pressure:</span>
-                                  <span className="font-medium">{record.vitalSigns.bloodPressure} mmHg</span>
-                                </div>
-                              )}
-                              {record.vitalSigns.temperature && (
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Temperature:</span>
-                                  <span className="font-medium">{record.vitalSigns.temperature}°C</span>
-                                </div>
-                              )}
-                              {record.vitalSigns.pulse && (
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Pulse:</span>
-                                  <span className="font-medium">{record.vitalSigns.pulse} bpm</span>
-                                </div>
-                              )}
-                              {record.vitalSigns.weight && (
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Weight:</span>
-                                  <span className="font-medium">{record.vitalSigns.weight} kg</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {record.medications.length > 0 && (
-                          <div>
-                            <h4 className="font-medium text-gray-900 mb-2">Medications Prescribed</h4>
-                            <div className="bg-white rounded border divide-y">
-                              {record.medications.map((med, medIndex) => (
-                                <div key={medIndex} className="p-3">
-                                  <div className="font-medium text-gray-900">{med.medicationName}</div>
-                                  <div className="text-sm text-gray-600">
-                                    {med.dosage} - {med.frequency} for {med.duration} days
-                                  </div>
-                                  <div className="text-sm text-gray-500">{med.instructions}</div>
-                                  <div className="text-sm font-medium text-green-600">
-                                    Qty: {med.quantity} tablets/capsules - KES {med.totalCost}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {record.analysisNotes && (
-                          <div>
-                            <h4 className="font-medium text-gray-900 mb-2">Clinical Analysis</h4>
-                            <p className="text-gray-700 bg-white p-3 rounded border">{record.analysisNotes}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {record.notes && (
-                      <div className="mt-4">
-                        <h4 className="font-medium text-gray-900 mb-2">Additional Notes</h4>
-                        <p className="text-gray-700 bg-white p-3 rounded border">{record.notes}</p>
-                      </div>
-                    )}
-
-                    {record.followUpDate && (
-                      <div className="mt-4 flex items-center space-x-2 text-sm text-blue-600">
-                        <Calendar className="h-4 w-4" />
-                        <span>Follow-up scheduled: {new Date(record.followUpDate).toLocaleDateString()}</span>
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8">
-                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">No medical records yet.</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'vitals' && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-gray-900">Vital Signs Trends</h3>
-              {patient.medicalHistory
-                .filter(record => record.vitalSigns && Object.keys(record.vitalSigns).length > 0)
-                .map((record) => (
-                  <div key={record.id} className="bg-white border rounded-lg p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="font-medium text-gray-900">
-                        {new Date(record.date).toLocaleDateString()}
-                      </span>
-                      <span className="text-sm text-gray-600">Dr. {record.doctorName}</span>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {record.vitalSigns?.bloodPressure && (
-                        <div className="text-center p-3 bg-red-50 rounded-lg">
-                          <Heart className="h-6 w-6 text-red-600 mx-auto mb-1" />
-                          <div className="text-sm text-gray-600">Blood Pressure</div>
-                          <div className="font-semibold text-red-600">{record.vitalSigns.bloodPressure}</div>
-                        </div>
-                      )}
-                      {record.vitalSigns?.temperature && (
-                        <div className="text-center p-3 bg-orange-50 rounded-lg">
-                          <Thermometer className="h-6 w-6 text-orange-600 mx-auto mb-1" />
-                          <div className="text-sm text-gray-600">Temperature</div>
-                          <div className="font-semibold text-orange-600">{record.vitalSigns.temperature}°C</div>
-                        </div>
-                      )}
-                      {record.vitalSigns?.weight && (
-                        <div className="text-center p-3 bg-blue-50 rounded-lg">
-                          <Weight className="h-6 w-6 text-blue-600 mx-auto mb-1" />
-                          <div className="text-sm text-gray-600">Weight</div>
-                          <div className="font-semibold text-blue-600">{record.vitalSigns.weight} kg</div>
-                        </div>
-                      )}
-                      {record.vitalSigns?.pulse && (
-                        <div className="text-center p-3 bg-green-50 rounded-lg">
-                          <Activity className="h-6 w-6 text-green-600 mx-auto mb-1" />
-                          <div className="text-sm text-gray-600">Pulse</div>
-                          <div className="font-semibold text-green-600">{record.vitalSigns.pulse} bpm</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-            </div>
-          )}
-
-          {activeTab === 'medications' && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-gray-900">Medication History</h3>
-              {patient.medicalHistory
-                .filter(record => record.medications.length > 0)
-                .map((record) => (
-                  <div key={record.id} className="bg-white border rounded-lg p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="font-medium text-gray-900">
-                        {new Date(record.date).toLocaleDateString()}
-                      </span>
-                      <span className="text-sm text-gray-600">Dr. {record.doctorName}</span>
-                    </div>
-                    <div className="space-y-3">
-                      {record.medications.map((med, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <div className="font-medium text-gray-900">{med.medicationName}</div>
-                            <div className="text-sm text-gray-600">
-                              {med.dosage} - {med.frequency} for {med.duration} days
-                            </div>
-                            <div className="text-sm text-gray-500">{med.instructions}</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-medium text-gray-900">Qty: {med.quantity}</div>
-                            <div className="text-sm text-green-600">KES {med.totalCost}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-            </div>
-          )}
-        </div>
 
         {/* Add New Record Modal */}
         {showAddRecord && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-60">
-            <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <div className="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto p-6">
               <h3 className="text-xl font-semibold text-gray-900 mb-6">
-                Add New Medical Record for {patient.name}
+                Add New Medical Record - SMART Format
               </h3>
 
               <div className="space-y-6">
-                {/* Services Provided */}
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Services Provided Today</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {services.map((service) => {
-                      const Icon = getServiceIcon(service.name);
-                      const isSelected = newRecord.servicesProvided.includes(service.id);
-                      return (
-                        <button
-                          key={service.id}
-                          onClick={() => toggleService(service.id)}
-                          className={`p-3 rounded-lg border-2 transition-all ${
-                            isSelected
-                              ? 'border-blue-600 bg-blue-50 text-blue-700'
-                              : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                          }`}
-                        >
-                          <div className="flex items-center space-x-2">
-                            <Icon className="h-4 w-4" />
-                            <span className="text-sm font-medium">{service.name}</span>
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1">KES {service.price}</div>
-                        </button>
-                      );
-                    })}
+                {/* Updated Gynecologic History for Female Patients */}
+                {patient.gender === 'female' && (
+                  <div className="bg-pink-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-gray-900 mb-3">Updated Gynecologic & Obstetric History</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Gravida (G)</label>
+                        <input
+                          type="text"
+                          value={gynecologicUpdate.gravida}
+                          onChange={(e) => setGynecologicUpdate(prev => ({ ...prev, gravida: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Para (P)</label>
+                        <input
+                          type="text"
+                          value={gynecologicUpdate.para}
+                          onChange={(e) => setGynecologicUpdate(prev => ({ ...prev, para: e.target.value }))}
+                          placeholder="e.g., 1+2 (live births + miscarriages)"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Format: live births + miscarriages (e.g., 1+2)</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Last Menstrual Period</label>
+                        <input
+                          type="date"
+                          value={gynecologicUpdate.lastMenstrualPeriod}
+                          onChange={(e) => setGynecologicUpdate(prev => ({ ...prev, lastMenstrualPeriod: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SMART Format Medical History */}
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-gray-900 mb-3">SMART Format Assessment</h4>
+                  
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Chief Complaint *</label>
+                      <textarea
+                        required
+                        value={newRecord.chiefComplaint}
+                        onChange={(e) => setNewRecord(prev => ({ ...prev, chiefComplaint: e.target.value }))}
+                        placeholder="Patient's main concern in their own words"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={2}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">History of Present Illness (HPI) *</label>
+                      <textarea
+                        required
+                        value={newRecord.historyOfPresentIllness}
+                        onChange={(e) => setNewRecord(prev => ({ ...prev, historyOfPresentIllness: e.target.value }))}
+                        placeholder="Detailed description of current illness"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6 mt-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Past Medical History</label>
+                      <textarea
+                        value={newRecord.pastMedicalHistory}
+                        onChange={(e) => setNewRecord(prev => ({ ...prev, pastMedicalHistory: e.target.value }))}
+                        placeholder="Previous medical conditions, hospitalizations"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={2}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Past Surgical History</label>
+                      <textarea
+                        value={newRecord.pastSurgicalHistory}
+                        onChange={(e) => setNewRecord(prev => ({ ...prev, pastSurgicalHistory: e.target.value }))}
+                        placeholder="Previous surgeries and procedures"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6 mt-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Family History</label>
+                      <textarea
+                        value={newRecord.familyHistory}
+                        onChange={(e) => setNewRecord(prev => ({ ...prev, familyHistory: e.target.value }))}
+                        placeholder="Relevant family medical history"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={2}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Social History</label>
+                      <textarea
+                        value={newRecord.socialHistory}
+                        onChange={(e) => setNewRecord(prev => ({ ...prev, socialHistory: e.target.value }))}
+                        placeholder="Smoking, alcohol, occupation, lifestyle"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Review of Systems</label>
+                    <textarea
+                      value={newRecord.reviewOfSystems}
+                      onChange={(e) => setNewRecord(prev => ({ ...prev, reviewOfSystems: e.target.value }))}
+                      placeholder="Systematic review of body systems"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows={3}
+                    />
                   </div>
                 </div>
 
@@ -534,50 +430,30 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
                   </div>
                 </div>
 
-                {/* Clinical Information */}
+                {/* Assessment and Plan */}
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Symptoms *</label>
-                    <textarea
-                      required
-                      value={newRecord.symptoms}
-                      onChange={(e) => setNewRecord(prev => ({ ...prev, symptoms: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      rows={3}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Assessment/Diagnosis *</label>
                     <textarea
                       required
                       value={newRecord.diagnosis}
                       onChange={(e) => setNewRecord(prev => ({ ...prev, diagnosis: e.target.value }))}
+                      placeholder="Clinical assessment and diagnosis"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       rows={3}
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Plan *</label>
-                  <textarea
-                    required
-                    value={newRecord.treatment}
-                    onChange={(e) => setNewRecord(prev => ({ ...prev, treatment: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Clinical Analysis</label>
-                  <textarea
-                    value={newRecord.analysisNotes}
-                    onChange={(e) => setNewRecord(prev => ({ ...prev, analysisNotes: e.target.value }))}
-                    placeholder="Detailed analysis of patient's condition, prognosis, and recommendations..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={4}
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Plan/Treatment *</label>
+                    <textarea
+                      required
+                      value={newRecord.treatment}
+                      onChange={(e) => setNewRecord(prev => ({ ...prev, treatment: e.target.value }))}
+                      placeholder="Treatment plan and management"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows={3}
+                    />
+                  </div>
                 </div>
 
                 {/* Medication Prescription */}
@@ -744,7 +620,7 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                   >
                     <Save className="h-4 w-4" />
-                    <span>Save Medical Record</span>
+                    <span>Save SMART Record</span>
                   </button>
                   <button
                     onClick={() => setShowAddRecord(false)}

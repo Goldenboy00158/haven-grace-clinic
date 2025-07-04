@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, Calculator, Pill, Heart, Activity, Send, Lightbulb, FileText, Users } from 'lucide-react';
+import { Bot, Calculator, Pill, Heart, Activity, Send, Lightbulb, FileText, Users, Weight, Ruler } from 'lucide-react';
 
 interface AIMessage {
   id: string;
@@ -13,51 +13,105 @@ export default function AIAssistant() {
     {
       id: '1',
       type: 'ai',
-      content: 'Hello! I\'m your medical AI assistant. I can help you with:\n\n• Dosage calculations\n• Drug interactions\n• BMI calculations\n• Medical reference information\n• Clinical decision support\n\nHow can I assist you today?',
+      content: 'Hello! I\'m your simplified medical AI assistant. I can help you with:\n\n• Quick BMI calculations\n• Basic dosage guidance\n• Simple medical references\n• Clinical decision support\n\nHow can I assist you today?',
       timestamp: new Date()
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
 
+  // BMI Calculator State
+  const [showBMICalculator, setShowBMICalculator] = useState(false);
+  const [bmiData, setBmiData] = useState({
+    weight: '',
+    height: '',
+    age: '',
+    gender: 'adult'
+  });
+
   const quickActions = [
     {
       icon: Calculator,
-      title: 'Dosage Calculator',
-      description: 'Calculate medication dosages',
-      prompt: 'Help me calculate dosage for a patient'
+      title: 'BMI Calculator',
+      description: 'Quick BMI calculation',
+      action: () => setShowBMICalculator(true)
     },
     {
       icon: Pill,
-      title: 'Drug Interactions',
-      description: 'Check drug interactions',
-      prompt: 'Check drug interactions between medications'
+      title: 'Dosage Guide',
+      description: 'Basic dosage guidance',
+      prompt: 'Help me with medication dosage'
     },
     {
       icon: Heart,
-      title: 'BMI Calculator',
-      description: 'Calculate BMI and assess',
-      prompt: 'Calculate BMI for a patient'
+      title: 'Vital Signs',
+      description: 'Normal ranges guide',
+      prompt: 'What are normal vital sign ranges?'
     },
     {
       icon: Activity,
-      title: 'Vital Signs',
-      description: 'Interpret vital signs',
-      prompt: 'Help me interpret these vital signs'
-    },
-    {
-      icon: FileText,
-      title: 'Clinical Guidelines',
-      description: 'Get clinical guidelines',
-      prompt: 'Provide clinical guidelines for'
-    },
-    {
-      icon: Users,
-      title: 'Patient Assessment',
-      description: 'Patient assessment help',
-      prompt: 'Help me assess a patient with'
+      title: 'Quick Reference',
+      description: 'Medical references',
+      prompt: 'I need medical reference information'
     }
   ];
+
+  const calculateBMI = () => {
+    const weight = parseFloat(bmiData.weight);
+    const height = parseFloat(bmiData.height);
+    
+    if (!weight || !height) {
+      alert('Please enter valid weight and height');
+      return;
+    }
+
+    const heightInMeters = height > 3 ? height / 100 : height;
+    const bmi = weight / (heightInMeters * heightInMeters);
+    
+    let category = '';
+    let recommendation = '';
+    
+    if (bmi < 18.5) {
+      category = 'Underweight';
+      recommendation = 'Consider nutritional counseling and weight gain strategies.';
+    } else if (bmi < 25) {
+      category = 'Normal weight';
+      recommendation = 'Maintain current healthy lifestyle and diet.';
+    } else if (bmi < 30) {
+      category = 'Overweight';
+      recommendation = 'Consider lifestyle modifications and dietary changes.';
+    } else {
+      category = 'Obese';
+      recommendation = 'Recommend medical evaluation and weight management program.';
+    }
+
+    const result = `**BMI Calculation Result:**
+
+**Patient Details:**
+• Weight: ${weight} kg
+• Height: ${height > 3 ? height + ' cm' : height + ' m'}
+• BMI: ${bmi.toFixed(1)}
+
+**Category:** ${category}
+
+**Clinical Recommendation:**
+${recommendation}
+
+**Normal BMI Range:** 18.5 - 24.9
+
+Would you like me to provide more specific guidance based on this BMI result?`;
+
+    const aiMessage: AIMessage = {
+      id: Date.now().toString(),
+      type: 'ai',
+      content: result,
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, aiMessage]);
+    setShowBMICalculator(false);
+    setBmiData({ weight: '', height: '', age: '', gender: 'adult' });
+  };
 
   const handleSendMessage = async (message: string) => {
     if (!message.trim()) return;
@@ -75,7 +129,7 @@ export default function AIAssistant() {
 
     // Simulate AI response
     setTimeout(() => {
-      const aiResponse = generateAIResponse(message);
+      const aiResponse = generateSimpleAIResponse(message);
       const aiMessage: AIMessage = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
@@ -84,138 +138,82 @@ export default function AIAssistant() {
       };
       setMessages(prev => [...prev, aiMessage]);
       setIsTyping(false);
-    }, 1500);
+    }, 1000);
   };
 
-  const generateAIResponse = (userMessage: string): string => {
+  const generateSimpleAIResponse = (userMessage: string): string => {
     const lowerMessage = userMessage.toLowerCase();
 
-    // Dosage calculations
+    // Simple dosage guidance
     if (lowerMessage.includes('dosage') || lowerMessage.includes('dose')) {
-      return `**Dosage Calculation Guidelines:**
+      return `**Simple Dosage Guidelines:**
 
-For accurate dosage calculations, I need:
-• Patient weight (kg)
-• Patient age
-• Medication name
-• Indication
+**Common Adult Dosages:**
+• Paracetamol: 500-1000mg every 4-6 hours (Max: 4g/day)
+• Ibuprofen: 200-400mg every 6-8 hours (Max: 1.2g/day)
+• Amoxicillin: 250-500mg every 8 hours
 
-**Common Formulas:**
-• Pediatric: mg/kg/day
-• Adult: Standard adult dose
-• Elderly: Often 50-75% of adult dose
+**Pediatric Dosing:**
+• Usually calculated by weight (mg/kg)
+• Always verify with pediatric guidelines
+• Consider age-appropriate formulations
 
-**Example:**
-Paracetamol for children: 10-15 mg/kg every 4-6 hours
-Max: 60 mg/kg/day
-
-Please provide specific patient details for precise calculations.`;
-    }
-
-    // BMI calculations
-    if (lowerMessage.includes('bmi')) {
-      return `**BMI Calculation:**
-
-Formula: BMI = Weight (kg) ÷ Height² (m²)
-
-**BMI Categories:**
-• Underweight: < 18.5
-• Normal: 18.5 - 24.9
-• Overweight: 25.0 - 29.9
-• Obese Class I: 30.0 - 34.9
-• Obese Class II: 35.0 - 39.9
-• Obese Class III: ≥ 40.0
-
-**Example:**
-Weight: 70kg, Height: 1.75m
-BMI = 70 ÷ (1.75)² = 22.9 (Normal)
-
-Provide weight and height for calculation.`;
-    }
-
-    // Drug interactions
-    if (lowerMessage.includes('interaction') || lowerMessage.includes('drug')) {
-      return `**Drug Interaction Checker:**
-
-**Major Interactions to Watch:**
-• Warfarin + Aspirin (bleeding risk)
-• ACE inhibitors + NSAIDs (kidney function)
-• Digoxin + Diuretics (electrolyte imbalance)
-• Metformin + Contrast agents (lactic acidosis)
-
-**Always Check:**
-• Liver metabolism (CYP450)
-• Kidney excretion
-• Protein binding
-• Therapeutic window
-
-Please specify the medications you want to check for interactions.`;
+**Remember:** Always check patient allergies and contraindications.`;
     }
 
     // Vital signs
-    if (lowerMessage.includes('vital') || lowerMessage.includes('blood pressure') || lowerMessage.includes('temperature')) {
-      return `**Vital Signs Reference:**
+    if (lowerMessage.includes('vital') || lowerMessage.includes('normal')) {
+      return `**Normal Vital Signs (Adults):**
 
-**Normal Adult Ranges:**
-• Blood Pressure: 90-120/60-80 mmHg
-• Heart Rate: 60-100 bpm
-• Respiratory Rate: 12-20/min
-• Temperature: 36.1-37.2°C
-• Oxygen Saturation: 95-100%
+• **Blood Pressure:** 90-120/60-80 mmHg
+• **Heart Rate:** 60-100 bpm
+• **Temperature:** 36.1-37.2°C
+• **Respiratory Rate:** 12-20/min
+• **Oxygen Saturation:** 95-100%
 
-**Pediatric Ranges Vary by Age:**
-• Infants: Higher HR, RR
-• Children: Age-adjusted BP
+**Pediatric ranges vary by age - always use age-specific charts.**
 
 **Red Flags:**
-• BP >180/120 (hypertensive crisis)
-• Temp >38.5°C (high fever)
-• O2 Sat <90% (hypoxemia)
-
-Provide specific values for interpretation.`;
+• BP >180/120 or <90/60
+• Temp >38.5°C or <35°C
+• O2 Sat <90%`;
     }
 
-    // Clinical guidelines
-    if (lowerMessage.includes('guideline') || lowerMessage.includes('protocol')) {
-      return `**Clinical Guidelines Available:**
+    // BMI related
+    if (lowerMessage.includes('bmi') || lowerMessage.includes('weight')) {
+      return `**BMI Quick Reference:**
 
-**Common Conditions:**
-• Hypertension Management
-• Diabetes Care
-• Antibiotic Stewardship
-• Pain Management
-• Emergency Protocols
+**Categories:**
+• Underweight: <18.5
+• Normal: 18.5-24.9
+• Overweight: 25-29.9
+• Obese: ≥30
 
-**Family Planning:**
-• Contraceptive Selection
-• IUD Insertion Guidelines
-• Emergency Contraception
+**Use the BMI Calculator above for quick calculations!**
 
-**Pediatric Care:**
-• Vaccination Schedules
-• Growth Monitoring
-• Fever Management
-
-Please specify the condition or procedure for detailed guidelines.`;
+**Clinical Notes:**
+• BMI doesn't account for muscle mass
+• Consider waist circumference for additional assessment
+• Age and ethnicity may affect interpretation`;
     }
 
-    // Default response
-    return `I understand you're asking about "${userMessage}". 
+    // Default simple response
+    return `I can help with basic medical guidance. Try asking about:
 
-I can help with:
-• **Medical Calculations** - Dosages, BMI, fluid requirements
-• **Drug Information** - Interactions, contraindications
-• **Clinical Guidelines** - Evidence-based protocols
-• **Vital Signs** - Normal ranges and interpretation
-• **Patient Assessment** - Systematic approaches
+• **Dosage calculations** - "What's the dose for paracetamol?"
+• **Normal ranges** - "What are normal vital signs?"
+• **BMI calculations** - Use the calculator above
+• **Basic references** - "Normal blood pressure range?"
 
-Please be more specific about what you need help with, and I'll provide detailed, clinically relevant information.
-
-**Note:** This is for educational purposes. Always verify with current clinical guidelines and consult senior colleagues for patient care decisions.`;
+Keep questions simple and specific for best results!`;
   };
 
-  const handleQuickAction = (prompt: string) => {
-    setInputMessage(prompt);
+  const handleQuickAction = (action: any) => {
+    if (action.action) {
+      action.action();
+    } else if (action.prompt) {
+      setInputMessage(action.prompt);
+    }
   };
 
   return (
@@ -226,22 +224,22 @@ Please be more specific about what you need help with, and I'll provide detailed
           <Bot className="h-6 w-6 text-purple-600" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">AI Medical Assistant</h2>
-          <p className="text-gray-600">Get help with calculations, guidelines, and clinical decisions</p>
+          <h2 className="text-2xl font-bold text-gray-900">Simple AI Medical Assistant</h2>
+          <p className="text-gray-600">Quick calculations and basic medical guidance</p>
         </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Quick Actions */}
         <div className="lg:col-span-1">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Tools</h3>
           <div className="space-y-3">
             {quickActions.map((action, index) => {
               const Icon = action.icon;
               return (
                 <button
                   key={index}
-                  onClick={() => handleQuickAction(action.prompt)}
+                  onClick={() => handleQuickAction(action)}
                   className="w-full p-4 bg-white rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-colors text-left"
                 >
                   <div className="flex items-start space-x-3">
@@ -261,7 +259,7 @@ Please be more specific about what you need help with, and I'll provide detailed
 
         {/* Chat Interface */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl border border-gray-200 h-[600px] flex flex-col">
+          <div className="bg-white rounded-xl border border-gray-200 h-[500px] flex flex-col">
             {/* Chat Header */}
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center space-x-2">
@@ -317,7 +315,7 @@ Please be more specific about what you need help with, and I'll provide detailed
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
-                  placeholder="Ask me about dosages, drug interactions, guidelines..."
+                  placeholder="Ask about dosages, normal ranges, or use tools above..."
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
                 <button
@@ -333,14 +331,74 @@ Please be more specific about what you need help with, and I'll provide detailed
         </div>
       </div>
 
+      {/* BMI Calculator Modal */}
+      {showBMICalculator && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-gray-900 flex items-center">
+                <Calculator className="h-5 w-5 mr-2 text-purple-600" />
+                BMI Calculator
+              </h3>
+              <button
+                onClick={() => setShowBMICalculator(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+                <input
+                  type="number"
+                  value={bmiData.weight}
+                  onChange={(e) => setBmiData(prev => ({ ...prev, weight: e.target.value }))}
+                  placeholder="e.g., 70"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Height</label>
+                <input
+                  type="number"
+                  value={bmiData.height}
+                  onChange={(e) => setBmiData(prev => ({ ...prev, height: e.target.value }))}
+                  placeholder="170 (cm) or 1.7 (m)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">Enter in cm (170) or meters (1.7)</p>
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  onClick={calculateBMI}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-medium transition-colors"
+                >
+                  Calculate BMI
+                </button>
+                <button
+                  onClick={() => setShowBMICalculator(false)}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Disclaimer */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <div className="flex items-start space-x-2">
           <Lightbulb className="h-5 w-5 text-yellow-600 mt-0.5" />
           <div className="text-sm text-yellow-800">
-            <strong>Important:</strong> This AI assistant provides educational information and calculation support. 
-            Always verify information with current clinical guidelines and consult with senior medical professionals 
-            for patient care decisions. Not a substitute for professional medical judgment.
+            <strong>Important:</strong> This simplified AI assistant provides basic guidance only. 
+            Always verify with current clinical guidelines and consult with senior medical professionals 
+            for patient care decisions.
           </div>
         </div>
       </div>
