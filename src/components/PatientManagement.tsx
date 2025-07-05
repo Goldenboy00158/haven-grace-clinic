@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Plus, User, Phone, Calendar, FileText, Edit, Eye, RotateCcw, Calculator, Heart, Stethoscope, ShoppingCart } from 'lucide-react';
+import { Search, Plus, User, Phone, Calendar, FileText, Edit, Eye, RotateCcw, Calculator, Heart, Stethoscope, ShoppingCart, AlertCircle, CheckCircle2, Clock, Activity } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Patient, MedicalRecord, DispensedMedication, VitalSigns, Transaction } from '../types';
 import { getTabletCapsuleMedications } from '../data/medications';
@@ -13,6 +13,53 @@ interface PatientManagementProps {
   isReviewMode?: boolean;
 }
 
+interface ComprehensiveHistory {
+  // Chief Complaint & History of Present Illness
+  chiefComplaint: string;
+  historyOfPresentIllness: string;
+  onsetDuration: string;
+  associatedSymptoms: string[];
+  
+  // Past Medical History
+  pastMedicalHistory: string;
+  currentMedications: string;
+  allergies: string;
+  surgicalHistory: string;
+  
+  // Social History
+  smokingStatus: 'never' | 'current' | 'former';
+  alcoholUse: 'none' | 'occasional' | 'moderate' | 'heavy';
+  occupation: string;
+  maritalStatus: 'single' | 'married' | 'divorced' | 'widowed';
+  
+  // Family History
+  familyHistory: string;
+  
+  // Review of Systems
+  reviewOfSystems: {
+    constitutional: string[];
+    cardiovascular: string[];
+    respiratory: string[];
+    gastrointestinal: string[];
+    genitourinary: string[];
+    neurological: string[];
+    musculoskeletal: string[];
+    dermatological: string[];
+    psychiatric: string[];
+  };
+  
+  // Physical Examination
+  generalAppearance: string;
+  systemicExamination: {
+    cardiovascular: string;
+    respiratory: string;
+    abdominal: string;
+    neurological: string;
+    musculoskeletal: string;
+    skin: string;
+  };
+}
+
 export default function PatientManagement({ isReviewMode = false }: PatientManagementProps) {
   const [patients, setPatients] = useLocalStorage<Patient[]>('clinic-patients', []);
   const [transactions, setTransactions] = useLocalStorage<Transaction[]>('clinic-transactions', []);
@@ -23,6 +70,7 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
   const [revisitPatient, setRevisitPatient] = useState<Patient | null>(null);
   const [showTCACalculator, setShowTCACalculator] = useState<Patient | null>(null);
   const [showServicesModal, setShowServicesModal] = useState<Patient | null>(null);
+  const [currentStep, setCurrentStep] = useState(1);
 
   // Get only tablet/capsule medications for prescription
   const availableMedications = getTabletCapsuleMedications();
@@ -34,7 +82,7 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
     phone: '',
     address: '',
     emergencyContact: '',
-    // First visit medical record
+    // Basic medical record
     symptoms: '',
     diagnosis: '',
     treatment: '',
@@ -49,7 +97,43 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
     para: '',
     lastMenstrualPeriod: '',
     contraceptiveHistory: '',
-    pregnancyHistory: ''
+    pregnancyHistory: '',
+    // Comprehensive history
+    comprehensiveHistory: {
+      chiefComplaint: '',
+      historyOfPresentIllness: '',
+      onsetDuration: '',
+      associatedSymptoms: [],
+      pastMedicalHistory: '',
+      currentMedications: '',
+      allergies: '',
+      surgicalHistory: '',
+      smokingStatus: 'never' as const,
+      alcoholUse: 'none' as const,
+      occupation: '',
+      maritalStatus: 'single' as const,
+      familyHistory: '',
+      reviewOfSystems: {
+        constitutional: [],
+        cardiovascular: [],
+        respiratory: [],
+        gastrointestinal: [],
+        genitourinary: [],
+        neurological: [],
+        musculoskeletal: [],
+        dermatological: [],
+        psychiatric: []
+      },
+      generalAppearance: '',
+      systemicExamination: {
+        cardiovascular: '',
+        respiratory: '',
+        abdominal: '',
+        neurological: '',
+        musculoskeletal: '',
+        skin: ''
+      }
+    } as ComprehensiveHistory
   });
 
   const [selectedMedication, setSelectedMedication] = useState('');
@@ -58,10 +142,57 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
   const [medicationDuration, setMedicationDuration] = useState(7);
   const [medicationInstructions, setMedicationInstructions] = useState('');
 
+  // Common symptoms for quick selection
+  const commonSymptoms = [
+    'Fever', 'Headache', 'Cough', 'Shortness of breath', 'Chest pain', 'Abdominal pain',
+    'Nausea', 'Vomiting', 'Diarrhea', 'Constipation', 'Fatigue', 'Dizziness',
+    'Joint pain', 'Back pain', 'Rash', 'Weight loss', 'Weight gain', 'Sleep problems'
+  ];
+
+  // Review of systems categories
+  const reviewOfSystemsCategories = {
+    constitutional: ['Fever', 'Chills', 'Night sweats', 'Weight loss', 'Weight gain', 'Fatigue', 'Malaise'],
+    cardiovascular: ['Chest pain', 'Palpitations', 'Shortness of breath', 'Orthopnea', 'Leg swelling', 'Syncope'],
+    respiratory: ['Cough', 'Shortness of breath', 'Wheezing', 'Hemoptysis', 'Chest pain'],
+    gastrointestinal: ['Nausea', 'Vomiting', 'Diarrhea', 'Constipation', 'Abdominal pain', 'Heartburn', 'Blood in stool'],
+    genitourinary: ['Dysuria', 'Frequency', 'Urgency', 'Hematuria', 'Incontinence', 'Discharge'],
+    neurological: ['Headache', 'Dizziness', 'Seizures', 'Weakness', 'Numbness', 'Memory problems'],
+    musculoskeletal: ['Joint pain', 'Muscle pain', 'Back pain', 'Stiffness', 'Swelling'],
+    dermatological: ['Rash', 'Itching', 'Changes in moles', 'Hair loss', 'Nail changes'],
+    psychiatric: ['Depression', 'Anxiety', 'Sleep problems', 'Mood changes', 'Concentration problems']
+  };
+
   const filteredPatients = patients.filter(patient =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     patient.phone.includes(searchTerm)
   );
+
+  const addSymptomToHistory = (symptom: string, category: keyof typeof reviewOfSystemsCategories) => {
+    setNewPatient(prev => ({
+      ...prev,
+      comprehensiveHistory: {
+        ...prev.comprehensiveHistory,
+        reviewOfSystems: {
+          ...prev.comprehensiveHistory.reviewOfSystems,
+          [category]: prev.comprehensiveHistory.reviewOfSystems[category].includes(symptom)
+            ? prev.comprehensiveHistory.reviewOfSystems[category].filter(s => s !== symptom)
+            : [...prev.comprehensiveHistory.reviewOfSystems[category], symptom]
+        }
+      }
+    }));
+  };
+
+  const addAssociatedSymptom = (symptom: string) => {
+    setNewPatient(prev => ({
+      ...prev,
+      comprehensiveHistory: {
+        ...prev.comprehensiveHistory,
+        associatedSymptoms: prev.comprehensiveHistory.associatedSymptoms.includes(symptom)
+          ? prev.comprehensiveHistory.associatedSymptoms.filter(s => s !== symptom)
+          : [...prev.comprehensiveHistory.associatedSymptoms, symptom]
+      }
+    }));
+  };
 
   const addMedicationToRecord = () => {
     if (!selectedMedication || !medicationFrequency) return;
@@ -100,18 +231,12 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
     
     const patientId = Date.now().toString();
     
-    // Create first medical record if any medical data is provided
-    const firstRecord: MedicalRecord | null = (
-      newPatient.symptoms || 
-      newPatient.diagnosis || 
-      newPatient.treatment || 
-      newPatient.medications.length > 0 ||
-      Object.keys(newPatient.vitalSigns).length > 0
-    ) ? {
+    // Create comprehensive first medical record
+    const firstRecord: MedicalRecord = {
       id: (Date.now() + 1).toString(),
       patientId: patientId,
       date: new Date().toISOString(),
-      symptoms: newPatient.symptoms,
+      symptoms: newPatient.comprehensiveHistory.chiefComplaint || newPatient.symptoms,
       diagnosis: newPatient.diagnosis,
       treatment: newPatient.treatment,
       medications: newPatient.medications,
@@ -119,8 +244,10 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
       notes: newPatient.notes,
       followUpDate: newPatient.followUpDate,
       doctorName: newPatient.doctorName,
-      analysisNotes: newPatient.analysisNotes
-    } : null;
+      analysisNotes: newPatient.analysisNotes,
+      // Store comprehensive history in the first record
+      comprehensiveHistory: newPatient.comprehensiveHistory
+    };
 
     const patient: Patient = {
       id: patientId,
@@ -130,7 +257,7 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
       phone: newPatient.phone,
       address: newPatient.address,
       emergencyContact: newPatient.emergencyContact,
-      medicalHistory: firstRecord ? [firstRecord] : [],
+      medicalHistory: [firstRecord],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       // Add gynecologic history for females
@@ -168,8 +295,44 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
       para: '',
       lastMenstrualPeriod: '',
       contraceptiveHistory: '',
-      pregnancyHistory: ''
+      pregnancyHistory: '',
+      comprehensiveHistory: {
+        chiefComplaint: '',
+        historyOfPresentIllness: '',
+        onsetDuration: '',
+        associatedSymptoms: [],
+        pastMedicalHistory: '',
+        currentMedications: '',
+        allergies: '',
+        surgicalHistory: '',
+        smokingStatus: 'never',
+        alcoholUse: 'none',
+        occupation: '',
+        maritalStatus: 'single',
+        familyHistory: '',
+        reviewOfSystems: {
+          constitutional: [],
+          cardiovascular: [],
+          respiratory: [],
+          gastrointestinal: [],
+          genitourinary: [],
+          neurological: [],
+          musculoskeletal: [],
+          dermatological: [],
+          psychiatric: []
+        },
+        generalAppearance: '',
+        systemicExamination: {
+          cardiovascular: '',
+          respiratory: '',
+          abdominal: '',
+          neurological: '',
+          musculoskeletal: '',
+          skin: ''
+        }
+      }
     });
+    setCurrentStep(1);
     setShowAddPatient(false);
   };
 
@@ -214,7 +377,6 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
   const handleTCASchedule = (tcaDate: string, method: string, nextDue: string) => {
     if (!showTCACalculator) return;
     
-    // Add TCA information to patient's medical history
     const tcaRecord: MedicalRecord = {
       id: Date.now().toString(),
       patientId: showTCACalculator.id,
@@ -239,13 +401,28 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
     setShowServicesModal(null);
   };
 
+  const getStepIcon = (step: number) => {
+    if (step < currentStep) return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+    if (step === currentStep) return <Clock className="h-5 w-5 text-blue-600" />;
+    return <div className="h-5 w-5 rounded-full border-2 border-gray-300"></div>;
+  };
+
+  const steps = [
+    { number: 1, title: 'Patient Demographics', icon: User },
+    { number: 2, title: 'Chief Complaint & HPI', icon: FileText },
+    { number: 3, title: 'Medical History', icon: Heart },
+    { number: 4, title: 'Review of Systems', icon: Activity },
+    { number: 5, title: 'Physical Exam & Vitals', icon: Stethoscope },
+    { number: 6, title: 'Assessment & Plan', icon: Edit }
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Patient Management</h2>
-          <p className="text-gray-600">Manage patient records and medical history ({availableMedications.length} medications available for prescription)</p>
+          <p className="text-gray-600">Comprehensive patient records with structured first visit documentation ({availableMedications.length} medications available)</p>
         </div>
         {!isReviewMode && (
           <button
@@ -304,6 +481,11 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
                       {patient.gynecologicHistory && (
                         <span>G{patient.gynecologicHistory.gravida}P{patient.gynecologicHistory.para}</span>
                       )}
+                      {patient.medicalHistory[0]?.comprehensiveHistory && (
+                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                          Complete History
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -356,415 +538,786 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
         )}
       </div>
 
-      {/* Add Patient Modal */}
+      {/* Enhanced Add Patient Modal with Step-by-Step Process */}
       {showAddPatient && !isReviewMode && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[95vh] overflow-y-auto p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">
-              Add New Patient with First Visit
-            </h3>
-            <form onSubmit={handleAddPatient} className="space-y-6">
-              {/* Patient Information */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-4">Patient Information</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={newPatient.name}
-                      onChange={(e) => setNewPatient(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
+          <div className="bg-white rounded-xl max-w-6xl w-full max-h-[95vh] overflow-y-auto">
+            {/* Progress Steps */}
+            <div className="bg-gray-50 p-6 border-b">
+              <div className="flex items-center justify-between">
+                {steps.map((step, index) => (
+                  <div key={step.number} className="flex items-center">
+                    <div className={`flex items-center space-x-2 ${step.number === currentStep ? 'text-blue-600' : step.number < currentStep ? 'text-green-600' : 'text-gray-400'}`}>
+                      {getStepIcon(step.number)}
+                      <span className="text-sm font-medium hidden md:block">{step.title}</span>
+                    </div>
+                    {index < steps.length - 1 && (
+                      <div className={`w-8 h-0.5 mx-2 ${step.number < currentStep ? 'bg-green-600' : 'bg-gray-300'}`}></div>
+                    )}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Age *</label>
-                    <input
-                      type="number"
-                      required
-                      value={newPatient.age}
-                      onChange={(e) => setNewPatient(prev => ({ ...prev, age: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
+                ))}
+              </div>
+            </div>
+
+            <form onSubmit={handleAddPatient} className="p-6">
+              {/* Step 1: Patient Demographics */}
+              {currentStep === 1 && (
+                <div className="space-y-6">
+                  <h3 className="text-xl font-semibold text-gray-900">Patient Demographics</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                      <input
+                        type="text"
+                        required
+                        value={newPatient.name}
+                        onChange={(e) => setNewPatient(prev => ({ ...prev, name: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Age *</label>
+                      <input
+                        type="number"
+                        required
+                        value={newPatient.age}
+                        onChange={(e) => setNewPatient(prev => ({ ...prev, age: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
+                      <select
+                        value={newPatient.gender}
+                        onChange={(e) => setNewPatient(prev => ({ ...prev, gender: e.target.value as any }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+                      <input
+                        type="tel"
+                        required
+                        value={newPatient.phone}
+                        onChange={(e) => setNewPatient(prev => ({ ...prev, phone: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Occupation</label>
+                      <input
+                        type="text"
+                        value={newPatient.comprehensiveHistory.occupation}
+                        onChange={(e) => setNewPatient(prev => ({
+                          ...prev,
+                          comprehensiveHistory: { ...prev.comprehensiveHistory, occupation: e.target.value }
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Marital Status</label>
+                      <select
+                        value={newPatient.comprehensiveHistory.maritalStatus}
+                        onChange={(e) => setNewPatient(prev => ({
+                          ...prev,
+                          comprehensiveHistory: { ...prev.comprehensiveHistory, maritalStatus: e.target.value as any }
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="single">Single</option>
+                        <option value="married">Married</option>
+                        <option value="divorced">Divorced</option>
+                        <option value="widowed">Widowed</option>
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                      <textarea
+                        value={newPatient.address}
+                        onChange={(e) => setNewPatient(prev => ({ ...prev, address: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={2}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
+                      <input
+                        type="tel"
+                        value={newPatient.emergencyContact}
+                        onChange={(e) => setNewPatient(prev => ({ ...prev, emergencyContact: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
                   </div>
+
+                  {/* Gynecologic History for Females */}
+                  {newPatient.gender === 'female' && (
+                    <div className="bg-pink-50 p-4 rounded-lg">
+                      <h4 className="font-medium text-gray-900 mb-4">Gynecologic & Obstetric History</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Gravida (G)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={newPatient.gravida}
+                            onChange={(e) => setNewPatient(prev => ({ ...prev, gravida: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Para (P)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={newPatient.para}
+                            onChange={(e) => setNewPatient(prev => ({ ...prev, para: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Last Menstrual Period</label>
+                          <input
+                            type="date"
+                            value={newPatient.lastMenstrualPeriod}
+                            onChange={(e) => setNewPatient(prev => ({ ...prev, lastMenstrualPeriod: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Contraceptive History</label>
+                          <input
+                            type="text"
+                            value={newPatient.contraceptiveHistory}
+                            onChange={(e) => setNewPatient(prev => ({ ...prev, contraceptiveHistory: e.target.value }))}
+                            placeholder="e.g., OCP, IUD, Condoms"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Step 2: Chief Complaint & HPI */}
+              {currentStep === 2 && (
+                <div className="space-y-6">
+                  <h3 className="text-xl font-semibold text-gray-900">Chief Complaint & History of Present Illness</h3>
+                  
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
-                    <select
-                      value={newPatient.gender}
-                      onChange={(e) => setNewPatient(prev => ({ ...prev, gender: e.target.value as any }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
-                    <input
-                      type="tel"
-                      required
-                      value={newPatient.phone}
-                      onChange={(e) => setNewPatient(prev => ({ ...prev, phone: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Chief Complaint *</label>
                     <textarea
-                      value={newPatient.address}
-                      onChange={(e) => setNewPatient(prev => ({ ...prev, address: e.target.value }))}
+                      required
+                      value={newPatient.comprehensiveHistory.chiefComplaint}
+                      onChange={(e) => setNewPatient(prev => ({
+                        ...prev,
+                        comprehensiveHistory: { ...prev.comprehensiveHistory, chiefComplaint: e.target.value }
+                      }))}
+                      placeholder="Patient's main concern in their own words..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       rows={2}
                     />
                   </div>
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">History of Present Illness</label>
+                    <textarea
+                      value={newPatient.comprehensiveHistory.historyOfPresentIllness}
+                      onChange={(e) => setNewPatient(prev => ({
+                        ...prev,
+                        comprehensiveHistory: { ...prev.comprehensiveHistory, historyOfPresentIllness: e.target.value }
+                      }))}
+                      placeholder="Detailed description of the current illness..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows={4}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Onset & Duration</label>
                     <input
-                      type="tel"
-                      value={newPatient.emergencyContact}
-                      onChange={(e) => setNewPatient(prev => ({ ...prev, emergencyContact: e.target.value }))}
+                      type="text"
+                      value={newPatient.comprehensiveHistory.onsetDuration}
+                      onChange={(e) => setNewPatient(prev => ({
+                        ...prev,
+                        comprehensiveHistory: { ...prev.comprehensiveHistory, onsetDuration: e.target.value }
+                      }))}
+                      placeholder="e.g., 3 days ago, gradual onset over 2 weeks"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
-                </div>
-              </div>
 
-              {/* Gynecologic and Obstetric History (for females) */}
-              {newPatient.gender === 'female' && (
-                <div className="bg-pink-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-4">Gynecologic & Obstetric History</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Gravida (G)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={newPatient.gravida}
-                        onChange={(e) => setNewPatient(prev => ({ ...prev, gravida: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Associated Symptoms</label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {commonSymptoms.map(symptom => (
+                        <button
+                          key={symptom}
+                          type="button"
+                          onClick={() => addAssociatedSymptom(symptom)}
+                          className={`p-2 text-sm rounded-lg border transition-colors ${
+                            newPatient.comprehensiveHistory.associatedSymptoms.includes(symptom)
+                              ? 'bg-blue-100 border-blue-300 text-blue-800'
+                              : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {symptom}
+                        </button>
+                      ))}
                     </div>
+                    {newPatient.comprehensiveHistory.associatedSymptoms.length > 0 && (
+                      <div className="mt-2 text-sm text-gray-600">
+                        Selected: {newPatient.comprehensiveHistory.associatedSymptoms.join(', ')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Medical History */}
+              {currentStep === 3 && (
+                <div className="space-y-6">
+                  <h3 className="text-xl font-semibold text-gray-900">Medical History</h3>
+                  
+                  <div className="grid md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Para (P)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={newPatient.para}
-                        onChange={(e) => setNewPatient(prev => ({ ...prev, para: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Last Menstrual Period</label>
-                      <input
-                        type="date"
-                        value={newPatient.lastMenstrualPeriod}
-                        onChange={(e) => setNewPatient(prev => ({ ...prev, lastMenstrualPeriod: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Contraceptive History</label>
-                      <input
-                        type="text"
-                        value={newPatient.contraceptiveHistory}
-                        onChange={(e) => setNewPatient(prev => ({ ...prev, contraceptiveHistory: e.target.value }))}
-                        placeholder="e.g., OCP, IUD, Condoms"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Pregnancy History</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Past Medical History</label>
                       <textarea
-                        value={newPatient.pregnancyHistory}
-                        onChange={(e) => setNewPatient(prev => ({ ...prev, pregnancyHistory: e.target.value }))}
-                        placeholder="Previous pregnancies, complications, deliveries..."
+                        value={newPatient.comprehensiveHistory.pastMedicalHistory}
+                        onChange={(e) => setNewPatient(prev => ({
+                          ...prev,
+                          comprehensiveHistory: { ...prev.comprehensiveHistory, pastMedicalHistory: e.target.value }
+                        }))}
+                        placeholder="Previous illnesses, hospitalizations, chronic conditions..."
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        rows={2}
+                        rows={4}
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Current Medications</label>
+                      <textarea
+                        value={newPatient.comprehensiveHistory.currentMedications}
+                        onChange={(e) => setNewPatient(prev => ({
+                          ...prev,
+                          comprehensiveHistory: { ...prev.comprehensiveHistory, currentMedications: e.target.value }
+                        }))}
+                        placeholder="Current medications, dosages, frequency..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={4}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Allergies</label>
+                      <textarea
+                        value={newPatient.comprehensiveHistory.allergies}
+                        onChange={(e) => setNewPatient(prev => ({
+                          ...prev,
+                          comprehensiveHistory: { ...prev.comprehensiveHistory, allergies: e.target.value }
+                        }))}
+                        placeholder="Drug allergies, food allergies, environmental allergies..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={3}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Surgical History</label>
+                      <textarea
+                        value={newPatient.comprehensiveHistory.surgicalHistory}
+                        onChange={(e) => setNewPatient(prev => ({
+                          ...prev,
+                          comprehensiveHistory: { ...prev.comprehensiveHistory, surgicalHistory: e.target.value }
+                        }))}
+                        placeholder="Previous surgeries, dates, complications..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Smoking Status</label>
+                      <select
+                        value={newPatient.comprehensiveHistory.smokingStatus}
+                        onChange={(e) => setNewPatient(prev => ({
+                          ...prev,
+                          comprehensiveHistory: { ...prev.comprehensiveHistory, smokingStatus: e.target.value as any }
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="never">Never</option>
+                        <option value="current">Current</option>
+                        <option value="former">Former</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Alcohol Use</label>
+                      <select
+                        value={newPatient.comprehensiveHistory.alcoholUse}
+                        onChange={(e) => setNewPatient(prev => ({
+                          ...prev,
+                          comprehensiveHistory: { ...prev.comprehensiveHistory, alcoholUse: e.target.value as any }
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="none">None</option>
+                        <option value="occasional">Occasional</option>
+                        <option value="moderate">Moderate</option>
+                        <option value="heavy">Heavy</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Family History</label>
+                    <textarea
+                      value={newPatient.comprehensiveHistory.familyHistory}
+                      onChange={(e) => setNewPatient(prev => ({
+                        ...prev,
+                        comprehensiveHistory: { ...prev.comprehensiveHistory, familyHistory: e.target.value }
+                      }))}
+                      placeholder="Family history of diseases, genetic conditions..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4: Review of Systems */}
+              {currentStep === 4 && (
+                <div className="space-y-6">
+                  <h3 className="text-xl font-semibold text-gray-900">Review of Systems</h3>
+                  <p className="text-gray-600">Select all symptoms the patient is currently experiencing:</p>
+                  
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {Object.entries(reviewOfSystemsCategories).map(([category, symptoms]) => (
+                      <div key={category} className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-medium text-gray-900 mb-3 capitalize">
+                          {category.replace(/([A-Z])/g, ' $1').trim()}
+                        </h4>
+                        <div className="space-y-2">
+                          {symptoms.map(symptom => (
+                            <button
+                              key={symptom}
+                              type="button"
+                              onClick={() => addSymptomToHistory(symptom, category as keyof typeof reviewOfSystemsCategories)}
+                              className={`w-full text-left p-2 text-sm rounded border transition-colors ${
+                                newPatient.comprehensiveHistory.reviewOfSystems[category as keyof typeof reviewOfSystemsCategories].includes(symptom)
+                                  ? 'bg-blue-100 border-blue-300 text-blue-800'
+                                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              {symptom}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 5: Physical Exam & Vitals */}
+              {currentStep === 5 && (
+                <div className="space-y-6">
+                  <h3 className="text-xl font-semibold text-gray-900">Physical Examination & Vital Signs</h3>
+                  
+                  {/* Vital Signs */}
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-gray-900 mb-4">Vital Signs</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Blood Pressure</label>
+                        <input
+                          type="text"
+                          placeholder="120/80"
+                          value={newPatient.vitalSigns.bloodPressure || ''}
+                          onChange={(e) => setNewPatient(prev => ({
+                            ...prev,
+                            vitalSigns: { ...prev.vitalSigns, bloodPressure: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Temperature (°C)</label>
+                        <input
+                          type="text"
+                          placeholder="36.5"
+                          value={newPatient.vitalSigns.temperature || ''}
+                          onChange={(e) => setNewPatient(prev => ({
+                            ...prev,
+                            vitalSigns: { ...prev.vitalSigns, temperature: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Pulse (bpm)</label>
+                        <input
+                          type="text"
+                          placeholder="72"
+                          value={newPatient.vitalSigns.pulse || ''}
+                          onChange={(e) => setNewPatient(prev => ({
+                            ...prev,
+                            vitalSigns: { ...prev.vitalSigns, pulse: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+                        <input
+                          type="text"
+                          placeholder="70"
+                          value={newPatient.vitalSigns.weight || ''}
+                          onChange={(e) => setNewPatient(prev => ({
+                            ...prev,
+                            vitalSigns: { ...prev.vitalSigns, weight: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* General Appearance */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">General Appearance</label>
+                    <textarea
+                      value={newPatient.comprehensiveHistory.generalAppearance}
+                      onChange={(e) => setNewPatient(prev => ({
+                        ...prev,
+                        comprehensiveHistory: { ...prev.comprehensiveHistory, generalAppearance: e.target.value }
+                      }))}
+                      placeholder="Patient appears well/ill, alert, oriented, in no acute distress..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows={2}
+                    />
+                  </div>
+
+                  {/* Systemic Examination */}
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-gray-900 mb-4">Systemic Examination</h4>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Cardiovascular</label>
+                        <textarea
+                          value={newPatient.comprehensiveHistory.systemicExamination.cardiovascular}
+                          onChange={(e) => setNewPatient(prev => ({
+                            ...prev,
+                            comprehensiveHistory: {
+                              ...prev.comprehensiveHistory,
+                              systemicExamination: {
+                                ...prev.comprehensiveHistory.systemicExamination,
+                                cardiovascular: e.target.value
+                              }
+                            }
+                          }))}
+                          placeholder="Heart sounds, murmurs, rhythm..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          rows={2}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Respiratory</label>
+                        <textarea
+                          value={newPatient.comprehensiveHistory.systemicExamination.respiratory}
+                          onChange={(e) => setNewPatient(prev => ({
+                            ...prev,
+                            comprehensiveHistory: {
+                              ...prev.comprehensiveHistory,
+                              systemicExamination: {
+                                ...prev.comprehensiveHistory.systemicExamination,
+                                respiratory: e.target.value
+                              }
+                            }
+                          }))}
+                          placeholder="Breath sounds, chest expansion..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          rows={2}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Abdominal</label>
+                        <textarea
+                          value={newPatient.comprehensiveHistory.systemicExamination.abdominal}
+                          onChange={(e) => setNewPatient(prev => ({
+                            ...prev,
+                            comprehensiveHistory: {
+                              ...prev.comprehensiveHistory,
+                              systemicExamination: {
+                                ...prev.comprehensiveHistory.systemicExamination,
+                                abdominal: e.target.value
+                              }
+                            }
+                          }))}
+                          placeholder="Inspection, palpation, bowel sounds..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          rows={2}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Neurological</label>
+                        <textarea
+                          value={newPatient.comprehensiveHistory.systemicExamination.neurological}
+                          onChange={(e) => setNewPatient(prev => ({
+                            ...prev,
+                            comprehensiveHistory: {
+                              ...prev.comprehensiveHistory,
+                              systemicExamination: {
+                                ...prev.comprehensiveHistory.systemicExamination,
+                                neurological: e.target.value
+                              }
+                            }
+                          }))}
+                          placeholder="Mental status, reflexes, motor/sensory..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          rows={2}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Vital Signs */}
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-4">Vital Signs (First Visit)</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Blood Pressure</label>
-                    <input
-                      type="text"
-                      placeholder="120/80"
-                      value={newPatient.vitalSigns.bloodPressure || ''}
-                      onChange={(e) => setNewPatient(prev => ({
-                        ...prev,
-                        vitalSigns: { ...prev.vitalSigns, bloodPressure: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Temperature (°C)</label>
-                    <input
-                      type="text"
-                      placeholder="36.5"
-                      value={newPatient.vitalSigns.temperature || ''}
-                      onChange={(e) => setNewPatient(prev => ({
-                        ...prev,
-                        vitalSigns: { ...prev.vitalSigns, temperature: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Pulse (bpm)</label>
-                    <input
-                      type="text"
-                      placeholder="72"
-                      value={newPatient.vitalSigns.pulse || ''}
-                      onChange={(e) => setNewPatient(prev => ({
-                        ...prev,
-                        vitalSigns: { ...prev.vitalSigns, pulse: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
-                    <input
-                      type="text"
-                      placeholder="70"
-                      value={newPatient.vitalSigns.weight || ''}
-                      onChange={(e) => setNewPatient(prev => ({
-                        ...prev,
-                        vitalSigns: { ...prev.vitalSigns, weight: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Clinical Information */}
-              <div className="bg-green-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-4">Clinical Information (First Visit)</h4>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Symptoms</label>
-                    <textarea
-                      value={newPatient.symptoms}
-                      onChange={(e) => setNewPatient(prev => ({ ...prev, symptoms: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      rows={3}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis</label>
-                    <textarea
-                      value={newPatient.diagnosis}
-                      onChange={(e) => setNewPatient(prev => ({ ...prev, diagnosis: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      rows={3}
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Plan</label>
-                  <textarea
-                    value={newPatient.treatment}
-                    onChange={(e) => setNewPatient(prev => ({ ...prev, treatment: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
-                  />
-                </div>
-
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Clinical Analysis</label>
-                  <textarea
-                    value={newPatient.analysisNotes}
-                    onChange={(e) => setNewPatient(prev => ({ ...prev, analysisNotes: e.target.value }))}
-                    placeholder="Detailed analysis of patient's condition, prognosis, and recommendations..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={4}
-                  />
-                </div>
-              </div>
-
-              {/* Medication Prescription */}
-              <div className="bg-yellow-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-4">Prescribe Medications (Tablets/Capsules Only)</h4>
-                <div className="border border-gray-300 rounded-lg p-4 space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {/* Step 6: Assessment & Plan */}
+              {currentStep === 6 && (
+                <div className="space-y-6">
+                  <h3 className="text-xl font-semibold text-gray-900">Assessment & Plan</h3>
+                  
+                  <div className="grid md:grid-cols-2 gap-6">
                     <div>
-                      <select
-                        value={selectedMedication}
-                        onChange={(e) => setSelectedMedication(e.target.value)}
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis</label>
+                      <textarea
+                        value={newPatient.diagnosis}
+                        onChange={(e) => setNewPatient(prev => ({ ...prev, diagnosis: e.target.value }))}
+                        placeholder="Primary and secondary diagnoses..."
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">Select medication</option>
-                        {availableMedications.map(med => (
-                          <option key={med.id} value={med.id}>
-                            {med.name} - KES {med.price} (Stock: {med.stock})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <input
-                        type="text"
-                        value={medicationDosage}
-                        onChange={(e) => setMedicationDosage(e.target.value)}
-                        placeholder="Dosage (e.g., 500mg)"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={3}
                       />
                     </div>
                     <div>
-                      <select
-                        value={medicationFrequency}
-                        onChange={(e) => setMedicationFrequency(e.target.value)}
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Plan</label>
+                      <textarea
+                        value={newPatient.treatment}
+                        onChange={(e) => setNewPatient(prev => ({ ...prev, treatment: e.target.value }))}
+                        placeholder="Treatment approach, interventions..."
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">Select frequency</option>
-                        {medicalShortForms.map(form => (
-                          <option key={form.code} value={form.code}>
-                            {form.code} - {form.description}
-                          </option>
-                        ))}
-                      </select>
+                        rows={3}
+                      />
                     </div>
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Clinical Analysis</label>
+                    <textarea
+                      value={newPatient.analysisNotes}
+                      onChange={(e) => setNewPatient(prev => ({ ...prev, analysisNotes: e.target.value }))}
+                      placeholder="Detailed analysis, differential diagnoses, prognosis..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows={4}
+                    />
+                  </div>
+
+                  {/* Medication Prescription */}
+                  <div className="bg-yellow-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-gray-900 mb-4">Prescribe Medications</h4>
+                    <div className="border border-gray-300 rounded-lg p-4 space-y-4">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div>
+                          <select
+                            value={selectedMedication}
+                            onChange={(e) => setSelectedMedication(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="">Select medication</option>
+                            {availableMedications.map(med => (
+                              <option key={med.id} value={med.id}>
+                                {med.name} - KES {med.price} (Stock: {med.stock})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <input
+                            type="text"
+                            value={medicationDosage}
+                            onChange={(e) => setMedicationDosage(e.target.value)}
+                            placeholder="Dosage (e.g., 500mg)"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <select
+                            value={medicationFrequency}
+                            onChange={(e) => setMedicationFrequency(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="">Select frequency</option>
+                            {medicalShortForms.map(form => (
+                              <option key={form.code} value={form.code}>
+                                {form.code} - {form.description}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <input
+                            type="number"
+                            min="1"
+                            value={medicationDuration}
+                            onChange={(e) => setMedicationDuration(parseInt(e.target.value))}
+                            placeholder="Duration (days)"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <input
+                            type="text"
+                            value={medicationInstructions}
+                            onChange={(e) => setMedicationInstructions(e.target.value)}
+                            placeholder="Instructions (e.g., after meals)"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                      
+                      {selectedMedication && medicationFrequency && medicationDuration > 0 && (
+                        <div className="bg-blue-100 p-3 rounded-lg">
+                          <p className="text-sm text-blue-800">
+                            <strong>Calculated Quantity:</strong> {calculateTotalQuantity(medicationFrequency, medicationDuration)} tablets/capsules
+                          </p>
+                        </div>
+                      )}
+                      
+                      <button
+                        type="button"
+                        onClick={addMedicationToRecord}
+                        disabled={!selectedMedication || !medicationFrequency}
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Add Medication
+                      </button>
+
+                      {newPatient.medications.length > 0 && (
+                        <div className="space-y-2">
+                          <h5 className="text-sm font-medium text-gray-700">Prescribed Medications:</h5>
+                          {newPatient.medications.map((med, index) => (
+                            <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                              <div>
+                                <p className="font-medium">{med.medicationName}</p>
+                                <p className="text-sm text-gray-600">
+                                  {med.dosage} - {med.frequency} for {med.duration} days
+                                </p>
+                                <p className="text-sm font-medium text-green-600">
+                                  Qty: {med.quantity} - KES {med.totalCost}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setNewPatient(prev => ({
+                                  ...prev,
+                                  medications: prev.medications.filter((_, i) => i !== index)
+                                }))}
+                                className="text-red-600 hover:text-red-800 text-sm"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Doctor Name</label>
                       <input
-                        type="number"
-                        min="1"
-                        value={medicationDuration}
-                        onChange={(e) => setMedicationDuration(parseInt(e.target.value))}
-                        placeholder="Duration (days)"
+                        type="text"
+                        value={newPatient.doctorName}
+                        onChange={(e) => setNewPatient(prev => ({ ...prev, doctorName: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                     <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Date</label>
                       <input
-                        type="text"
-                        value={medicationInstructions}
-                        onChange={(e) => setMedicationInstructions(e.target.value)}
-                        placeholder="Instructions (e.g., after meals)"
+                        type="date"
+                        value={newPatient.followUpDate}
+                        onChange={(e) => setNewPatient(prev => ({ ...prev, followUpDate: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>
-                  
-                  {/* Quantity Calculator Display */}
-                  {selectedMedication && medicationFrequency && medicationDuration > 0 && (
-                    <div className="bg-blue-100 p-3 rounded-lg">
-                      <p className="text-sm text-blue-800">
-                        <strong>Calculated Quantity:</strong> {calculateTotalQuantity(medicationFrequency, medicationDuration)} tablets/capsules
-                        <br />
-                        <span className="text-xs">
-                          ({medicationFrequency} × {medicationDuration} days = {calculateTotalQuantity(medicationFrequency, medicationDuration)} units)
-                        </span>
-                      </p>
-                    </div>
-                  )}
-                  
-                  <button
-                    type="button"
-                    onClick={addMedicationToRecord}
-                    disabled={!selectedMedication || !medicationFrequency}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Add Medication
-                  </button>
 
-                  {/* Prescribed Medications List */}
-                  {newPatient.medications.length > 0 && (
-                    <div className="space-y-2">
-                      <h5 className="text-sm font-medium text-gray-700">Prescribed Medications:</h5>
-                      {newPatient.medications.map((med, index) => (
-                        <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                          <div>
-                            <p className="font-medium">{med.medicationName}</p>
-                            <p className="text-sm text-gray-600">
-                              {med.dosage} - {med.frequency} for {med.duration} days
-                            </p>
-                            <p className="text-sm text-gray-500">{med.instructions}</p>
-                            <p className="text-sm font-medium text-green-600">
-                              Qty: {med.quantity} tablets/capsules - KES {med.totalCost}
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setNewPatient(prev => ({
-                              ...prev,
-                              medications: prev.medications.filter((_, i) => i !== index)
-                            }))}
-                            className="text-red-600 hover:text-red-800 text-sm"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                      <div className="bg-green-100 p-3 rounded-lg">
-                        <p className="font-semibold text-green-800">
-                          Total Medication Cost: KES {newPatient.medications.reduce((sum, med) => sum + med.totalCost, 0)}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
+                    <textarea
+                      value={newPatient.notes}
+                      onChange={(e) => setNewPatient(prev => ({ ...prev, notes: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows={3}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Additional Information */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Doctor Name</label>
-                  <input
-                    type="text"
-                    value={newPatient.doctorName}
-                    onChange={(e) => setNewPatient(prev => ({ ...prev, doctorName: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Date</label>
-                  <input
-                    type="date"
-                    value={newPatient.followUpDate}
-                    onChange={(e) => setNewPatient(prev => ({ ...prev, followUpDate: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
-                <textarea
-                  value={newPatient.notes}
-                  onChange={(e) => setNewPatient(prev => ({ ...prev, notes: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={3}
-                />
-              </div>
-
-              <div className="flex space-x-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors"
-                >
-                  Add Patient
-                </button>
+              {/* Navigation Buttons */}
+              <div className="flex justify-between pt-6 border-t">
                 <button
                   type="button"
-                  onClick={() => setShowAddPatient(false)}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 rounded-lg font-medium transition-colors"
+                  onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+                  disabled={currentStep === 1}
+                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Cancel
+                  Previous
                 </button>
+                
+                <div className="flex space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddPatient(false);
+                      setCurrentStep(1);
+                    }}
+                    className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  
+                  {currentStep < 6 ? (
+                    <button
+                      type="button"
+                      onClick={() => setCurrentStep(currentStep + 1)}
+                      className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                    >
+                      Next
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                    >
+                      Add Patient
+                    </button>
+                  )}
+                </div>
               </div>
             </form>
           </div>
