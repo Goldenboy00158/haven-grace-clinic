@@ -515,9 +515,11 @@ export default function ServicesManagement({ isReviewMode = false }: ServicesMan
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Service Name *</label>
                   <input
-  type="text"
-  placeholder="Service Name"
-  value={newService.name}
-  onChange={(e) => setNewService(prev => ({ ...prev, name: e.target.value }))}
-  className="form-input"
-/>
+  <div className="form-group">
+  <input
+    type="text"
+    placeholder="Service Name"
+    value={newService.name}
+    onChange={(e) => setNewService(prev => ({ ...prev, name: e.target.value }))}
+    className="form-input"
+  />
