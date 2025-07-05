@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Package, Users, FileText, BarChart3, Menu, X, Settings as SettingsIcon, Stethoscope, Heart, Bot, TrendingDown } from 'lucide-react';
 import InventoryManagement from './components/InventoryManagement';
 import PatientManagement from './components/PatientManagement';
@@ -26,6 +26,19 @@ function App() {
   if (isSharedView && shareId) {
     return <ShareableView shareId={shareId} />;
   }
+
+  // Listen for navigation events from Settings
+  useEffect(() => {
+    const handleNavigateToTab = (event: CustomEvent) => {
+      setActiveTab(event.detail);
+      setIsMobileMenuOpen(false);
+    };
+
+    window.addEventListener('navigate-to-tab', handleNavigateToTab as EventListener);
+    return () => {
+      window.removeEventListener('navigate-to-tab', handleNavigateToTab as EventListener);
+    };
+  }, []);
 
   const tabs = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },

@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Search, X, ShoppingCart, Heart, Stethoscope, Activity, Users, Pill, Shield, Baby, Filter, DollarSign, Percent, CreditCard, Smartphone, Clock, CheckCircle } from 'lucide-react';
+import { Search, X, ShoppingCart, Heart, Stethoscope, Activity, Users, Pill, Shield, Baby, Filter, DollarSign, Percent, CreditCard, Smartphone, Clock, CheckCircle, Package } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { Patient, Transaction } from '../types';
+import { Patient, Transaction, Medication } from '../types';
+import { medications } from '../data/medications';
 import DiscountModal from './DiscountModal';
 import PaymentMethodModal from './PaymentMethodModal';
 
@@ -40,6 +41,7 @@ interface ServiceItem {
   discountReason?: string;
   category: string;
   description: string;
+  type: 'medication' | 'service';
 }
 
 interface EnhancedPatientServicesModalProps {
@@ -219,57 +221,70 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedServices, setSelectedServices] = useState<ServiceItem[]>([]);
+  const [selectedItems, setSelectedItems] = useState<ServiceItem[]>([]);
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
   const [showDiscountModal, setShowDiscountModal] = useState<ServiceItem | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [activeServiceTab, setActiveServiceTab] = useState<'clinical' | 'family_planning'>('clinical');
+  const [activeTab, setActiveTab] = useState<'clinical' | 'family_planning' | 'medications'>('clinical');
 
-  // Combine all services based on patient gender and active tab
-  const allServices = useMemo(() => {
-    let services: any[] = [];
+  // Get available medications with stock > 0
+  const availableMedications = medications.filter(med => med.stock > 0);
+
+  // Combine all items based on active tab
+  const allItems = useMemo(() => {
+    let items: any[] = [];
     
-    if (activeServiceTab === 'clinical') {
-      services = clinicalServices.map(service => ({
+    if (activeTab === 'clinical') {
+      items = clinicalServices.map(service => ({
         ...service,
+        type: 'service',
         serviceType: 'clinical'
       }));
-    } else if (activeServiceTab === 'family_planning') {
+    } else if (activeTab === 'family_planning') {
       // Only show family planning services for female patients
       if (patient.gender === 'female') {
-        services = fpServices.map(fp => ({
+        items = fpServices.map(fp => ({
           ...fp,
+          type: 'service',
           serviceType: 'family_planning'
         }));
       }
+    } else if (activeTab === 'medications') {
+      items = availableMedications.map(med => ({
+        ...med,
+        type: 'medication',
+        category: med.category || 'medications'
+      }));
     }
     
-    return services;
-  }, [clinicalServices, fpServices, patient.gender, activeServiceTab]);
+    return items;
+  }, [clinicalServices, fpServices, availableMedications, patient.gender, activeTab]);
 
   // Get unique categories for current tab
   const categories = useMemo(() => {
-    const cats = new Set(allServices.map(service => service.category));
+    const cats = new Set(allItems.map(item => item.category));
     return Array.from(cats).sort();
-  }, [allServices]);
+  }, [allItems]);
 
-  // Filter services
-  const filteredServices = useMemo(() => {
-    return allServices.filter(service => {
-      const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           service.description.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = !selectedCategory || service.category === selectedCategory;
+  // Filter items
+  const filteredItems = useMemo(() => {
+    return allItems.filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           item.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = !selectedCategory || item.category === selectedCategory;
       
       let matchesPrice = true;
-      if (priceRange.min && service.price < parseFloat(priceRange.min)) matchesPrice = false;
-      if (priceRange.max && service.price > parseFloat(priceRange.max)) matchesPrice = false;
+      if (priceRange.min && item.price < parseFloat(priceRange.min)) matchesPrice = false;
+      if (priceRange.max && item.price > parseFloat(priceRange.max)) matchesPrice = false;
       
       return matchesSearch && matchesCategory && matchesPrice;
     });
-  }, [allServices, searchTerm, selectedCategory, priceRange]);
+  }, [allItems, searchTerm, selectedCategory, priceRange]);
 
-  const getServiceIcon = (category: string) => {
-    switch (category) {
+  const getItemIcon = (item: any) => {
+    if (item.type === 'medication') return Package;
+    
+    switch (item.category) {
       case 'contraceptive_implant': return Shield;
       case 'iud': return Heart;
       case 'injection': return Activity;
@@ -292,47 +307,49 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
       case 'diagnostics': return 'bg-blue-100 text-blue-800';
       case 'procedures': return 'bg-purple-100 text-purple-800';
       case 'consultations': return 'bg-green-100 text-green-800';
+      case 'medications': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const addServiceToSelection = (service: any) => {
-    const existingService = selectedServices.find(s => s.id === service.id);
-    if (!existingService) {
-      setSelectedServices(prev => [...prev, {
-        id: service.id,
-        name: service.name,
-        price: service.price,
-        quantity: 1,
-        totalCost: service.price,
-        category: service.category,
-        description: service.description
+  const addItemToSelection = (item: any) => {
+    const existingItem = selectedItems.find(s => s.id === item.id);
+    if (!existingItem) {
+      setSelectedItems(prev => [...prev, {
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.type === 'medication' ? 0.5 : 1,
+        totalCost: item.type === 'medication' ? item.price * 0.5 : item.price,
+        category: item.category,
+        description: item.description,
+        type: item.type
       }]);
     }
   };
 
-  const removeServiceFromSelection = (serviceId: string) => {
-    setSelectedServices(prev => prev.filter(s => s.id !== serviceId));
+  const removeItemFromSelection = (itemId: string) => {
+    setSelectedItems(prev => prev.filter(s => s.id !== itemId));
   };
 
-  const updateServiceQuantity = (serviceId: string, quantity: number) => {
+  const updateItemQuantity = (itemId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeServiceFromSelection(serviceId);
+      removeItemFromSelection(itemId);
     } else {
-      setSelectedServices(prev => prev.map(service => 
-        service.id === serviceId ? { 
-          ...service, 
+      setSelectedItems(prev => prev.map(item => 
+        item.id === itemId ? { 
+          ...item, 
           quantity, 
-          totalCost: (service.originalPrice || service.price) * quantity 
-        } : service
+          totalCost: (item.originalPrice || item.price) * quantity 
+        } : item
       ));
     }
   };
 
-  const applyDiscount = (serviceId: string, discountType: 'percentage' | 'fixed', discountValue: number) => {
-    setSelectedServices(prev => prev.map(service => {
-      if (service.id === serviceId) {
-        const originalPrice = service.originalPrice || service.price;
+  const applyDiscount = (itemId: string, discountType: 'percentage' | 'fixed', discountValue: number) => {
+    setSelectedItems(prev => prev.map(item => {
+      if (item.id === itemId) {
+        const originalPrice = item.originalPrice || item.price;
         let discountedPrice = originalPrice;
         
         if (discountType === 'percentage') {
@@ -342,22 +359,22 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
         }
         
         return {
-          ...service,
+          ...item,
           originalPrice: originalPrice,
           price: discountedPrice,
-          totalCost: discountedPrice * service.quantity,
+          totalCost: discountedPrice * item.quantity,
           discountType,
           discountValue
         };
       }
-      return service;
+      return item;
     }));
   };
 
-  const totalAmount = selectedServices.reduce((sum, service) => sum + service.totalCost, 0);
-  const totalSavings = selectedServices.reduce((sum, service) => {
-    if (service.originalPrice) {
-      return sum + ((service.originalPrice - service.price) * service.quantity);
+  const totalAmount = selectedItems.reduce((sum, item) => sum + item.totalCost, 0);
+  const totalSavings = selectedItems.reduce((sum, item) => {
+    if (item.originalPrice) {
+      return sum + ((item.originalPrice - item.price) * item.quantity);
     }
     return sum;
   }, 0);
@@ -368,16 +385,16 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
       type: 'patient',
       patientId: patient.id,
       patientName: patient.name,
-      items: selectedServices.map(service => ({
-        medicationId: service.id,
-        medicationName: service.name,
-        quantity: service.quantity,
+      items: selectedItems.map(item => ({
+        medicationId: item.id,
+        medicationName: item.name,
+        quantity: item.quantity,
         dosage: '',
         frequency: '',
         duration: 0,
-        instructions: service.description,
-        price: service.price,
-        totalCost: service.totalCost
+        instructions: item.description,
+        price: item.price,
+        totalCost: item.totalCost
       })),
       totalAmount,
       date: new Date().toISOString(),
@@ -386,7 +403,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
     };
 
     setTransactions(prev => [transaction, ...prev]);
-    onChargePatient(selectedServices, totalAmount, paymentMethod, transactionId);
+    onChargePatient(selectedItems, totalAmount, paymentMethod, transactionId);
     setShowPaymentModal(false);
     onClose();
   };
@@ -399,7 +416,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-xl font-semibold">
-                Available Services for {patient.name}
+                Complete Services & Medications for {patient.name}
               </h3>
               <div className="flex items-center space-x-4 text-blue-100 text-sm mt-1">
                 <span>Age: {patient.age}</span>
@@ -426,9 +443,9 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
           <div className="mb-6">
             <div className="flex bg-gray-100 rounded-lg p-1">
               <button
-                onClick={() => setActiveServiceTab('clinical')}
+                onClick={() => setActiveTab('clinical')}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors flex-1 justify-center ${
-                  activeServiceTab === 'clinical'
+                  activeTab === 'clinical'
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'text-gray-600 hover:text-blue-600'
                 }`}
@@ -438,9 +455,9 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
               </button>
               {patient.gender === 'female' && (
                 <button
-                  onClick={() => setActiveServiceTab('family_planning')}
+                  onClick={() => setActiveTab('family_planning')}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors flex-1 justify-center ${
-                    activeServiceTab === 'family_planning'
+                    activeTab === 'family_planning'
                       ? 'bg-pink-600 text-white shadow-md'
                       : 'text-gray-600 hover:text-pink-600'
                   }`}
@@ -449,6 +466,17 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                   <span>Family Planning</span>
                 </button>
               )}
+              <button
+                onClick={() => setActiveTab('medications')}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors flex-1 justify-center ${
+                  activeTab === 'medications'
+                    ? 'bg-orange-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-orange-600'
+                }`}
+              >
+                <Package className="h-4 w-4" />
+                <span>Medications</span>
+              </button>
             </div>
           </div>
 
@@ -459,7 +487,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search services..."
+                  placeholder={`Search ${activeTab === 'medications' ? 'medications' : 'services'}...`}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
@@ -497,7 +525,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
             </div>
 
             <div className="flex items-center justify-between text-sm text-gray-600">
-              <span>Found {filteredServices.length} services</span>
+              <span>Found {filteredItems.length} {activeTab === 'medications' ? 'medications' : 'services'}</span>
               <button
                 onClick={() => {
                   setSearchTerm('');
@@ -512,62 +540,68 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
           </div>
 
           <div className="grid lg:grid-cols-3 gap-6">
-            {/* Available Services */}
+            {/* Available Items */}
             <div className="lg:col-span-2">
               <h4 className="font-medium text-gray-900 mb-4">
-                Available {activeServiceTab === 'family_planning' ? 'Family Planning' : 'Clinical'} Services
+                Available {activeTab === 'family_planning' ? 'Family Planning Services' : 
+                          activeTab === 'medications' ? 'Medications' : 'Clinical Services'}
               </h4>
               <div className="space-y-3 max-h-96 overflow-y-auto">
-                {filteredServices.map((service) => {
-                  const Icon = getServiceIcon(service.category);
-                  const isSelected = selectedServices.some(s => s.id === service.id);
+                {filteredItems.map((item) => {
+                  const Icon = getItemIcon(item);
+                  const isSelected = selectedItems.some(s => s.id === item.id);
                   
                   return (
-                    <div key={service.id} className={`p-4 border rounded-lg hover:bg-gray-50 transition-colors ${
+                    <div key={item.id} className={`p-4 border rounded-lg hover:bg-gray-50 transition-colors ${
                       isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                     }`}>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
                             <Icon className="h-5 w-5 text-blue-600" />
-                            <h5 className="font-medium text-gray-900">{service.name}</h5>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(service.category)}`}>
-                              {service.category.replace('_', ' ')}
+                            <h5 className="font-medium text-gray-900">{item.name}</h5>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(item.category)}`}>
+                              {item.category.replace('_', ' ')}
                             </span>
+                            {item.type === 'medication' && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                Stock: {item.stock}
+                              </span>
+                            )}
                           </div>
                           
-                          <p className="text-sm text-gray-600 mb-2">{service.description}</p>
+                          <p className="text-sm text-gray-600 mb-2">{item.description}</p>
                           
                           <div className="flex items-center space-x-4 text-sm text-gray-500">
                             <div className="flex items-center">
                               <DollarSign className="h-4 w-4 mr-1" />
-                              <span className="font-medium text-green-600">KES {service.price.toLocaleString()}</span>
+                              <span className="font-medium text-green-600">KES {item.price.toLocaleString()}</span>
                             </div>
-                            {service.duration && (
+                            {item.duration && (
                               <div className="flex items-center">
                                 <Clock className="h-4 w-4 mr-1" />
-                                <span>{service.duration} min</span>
+                                <span>{item.duration} min</span>
                               </div>
                             )}
-                            {service.effectiveness && (
+                            {item.effectiveness && (
                               <div className="text-green-600 font-medium">
-                                {service.effectiveness}
+                                {item.effectiveness}
                               </div>
                             )}
                           </div>
 
-                          {service.requirements && service.requirements.length > 0 && (
+                          {item.requirements && item.requirements.length > 0 && (
                             <div className="mt-2">
                               <p className="text-xs text-gray-500">
-                                Requirements: {service.requirements.slice(0, 2).join(', ')}
-                                {service.requirements.length > 2 && '...'}
+                                Requirements: {item.requirements.slice(0, 2).join(', ')}
+                                {item.requirements.length > 2 && '...'}
                               </p>
                             </div>
                           )}
                         </div>
                         
                         <button
-                          onClick={() => addServiceToSelection(service)}
+                          onClick={() => addItemToSelection(item)}
                           disabled={isSelected}
                           className={`ml-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                             isSelected 
@@ -582,13 +616,13 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                   );
                 })}
                 
-                {filteredServices.length === 0 && (
+                {filteredItems.length === 0 && (
                   <div className="text-center py-8">
                     <Stethoscope className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500">
-                      {patient.gender !== 'female' && activeServiceTab === 'family_planning' 
+                      {patient.gender !== 'female' && activeTab === 'family_planning' 
                         ? 'Family planning services are only available for female patients.'
-                        : 'No services found matching your criteria.'
+                        : `No ${activeTab === 'medications' ? 'medications' : 'services'} found matching your criteria.`
                       }
                     </p>
                   </div>
@@ -596,18 +630,18 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
               </div>
             </div>
 
-            {/* Selected Services */}
+            {/* Selected Items */}
             <div className="lg:col-span-1">
-              <h4 className="font-medium text-gray-900 mb-4">Selected Services</h4>
+              <h4 className="font-medium text-gray-900 mb-4">Selected Items</h4>
               <div className="bg-gray-50 rounded-lg p-4">
-                {selectedServices.length > 0 ? (
+                {selectedItems.length > 0 ? (
                   <div className="space-y-3">
-                    {selectedServices.map((service) => (
-                      <div key={service.id} className="bg-white p-3 rounded-lg border">
+                    {selectedItems.map((item) => (
+                      <div key={item.id} className="bg-white p-3 rounded-lg border">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium text-sm">{service.name}</span>
+                          <span className="font-medium text-sm">{item.name}</span>
                           <button
-                            onClick={() => removeServiceFromSelection(service.id)}
+                            onClick={() => removeItemFromSelection(item.id)}
                             className="text-red-600 hover:text-red-800 text-sm"
                           >
                             <X className="h-4 w-4" />
@@ -618,34 +652,41 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center space-x-2">
                               <button
-                                onClick={() => updateServiceQuantity(service.id, service.quantity - 1)}
+                                onClick={() => updateItemQuantity(item.id, item.quantity - (item.type === 'medication' ? 0.5 : 1))}
                                 className="bg-gray-200 hover:bg-gray-300 text-gray-700 w-6 h-6 rounded text-xs"
                               >
                                 -
                               </button>
-                              <span className="w-8 text-center">{service.quantity}</span>
+                              <input
+                                type="number"
+                                step={item.type === 'medication' ? "0.5" : "1"}
+                                min={item.type === 'medication' ? "0.5" : "1"}
+                                value={item.quantity}
+                                onChange={(e) => updateItemQuantity(item.id, parseFloat(e.target.value) || (item.type === 'medication' ? 0.5 : 1))}
+                                className="w-16 text-center border border-gray-300 rounded px-1 py-0.5 text-xs"
+                              />
                               <button
-                                onClick={() => updateServiceQuantity(service.id, service.quantity + 1)}
+                                onClick={() => updateItemQuantity(item.id, item.quantity + (item.type === 'medication' ? 0.5 : 1))}
                                 className="bg-gray-200 hover:bg-gray-300 text-gray-700 w-6 h-6 rounded text-xs"
                               >
                                 +
                               </button>
                             </div>
                             <div className="text-right">
-                              {service.originalPrice && (
+                              {item.originalPrice && (
                                 <div className="text-xs text-gray-500 line-through">
-                                  KES {(service.originalPrice * service.quantity).toLocaleString()}
+                                  KES {(item.originalPrice * item.quantity).toLocaleString()}
                                 </div>
                               )}
                               <span className="font-medium text-green-600">
-                                KES {service.totalCost.toLocaleString()}
+                                KES {item.totalCost.toLocaleString()}
                               </span>
                             </div>
                           </div>
                           
                           <div className="flex space-x-1">
                             <button
-                              onClick={() => setShowDiscountModal(service)}
+                              onClick={() => setShowDiscountModal(item)}
                               className="flex-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center justify-center space-x-1"
                             >
                               <Percent className="h-3 w-3" />
@@ -653,9 +694,9 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                             </button>
                           </div>
                           
-                          {service.discountValue && (
+                          {item.discountValue && (
                             <div className="text-xs text-green-600 bg-green-50 p-1 rounded">
-                              {service.discountType === 'percentage' ? `${service.discountValue}% off` : `KES ${service.discountValue} off`}
+                              {item.discountType === 'percentage' ? `${item.discountValue}% off` : `KES ${item.discountValue} off`}
                             </div>
                           )}
                         </div>
@@ -680,7 +721,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                 ) : (
                   <div className="text-center py-8">
                     <ShoppingCart className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-500 text-sm">No services selected</p>
+                    <p className="text-gray-500 text-sm">No items selected</p>
                   </div>
                 )}
               </div>
@@ -691,7 +732,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
           <div className="flex space-x-3 pt-6 border-t mt-6">
             <button
               onClick={() => setShowPaymentModal(true)}
-              disabled={selectedServices.length === 0}
+              disabled={selectedItems.length === 0}
               className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
               <CreditCard className="h-4 w-4" />

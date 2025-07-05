@@ -111,6 +111,9 @@ export interface SaleItem {
   totalCost: number;
   frequency?: string;
   duration?: number;
+  originalPrice?: number;
+  discountType?: 'percentage' | 'fixed';
+  discountValue?: number;
 }
 
 export interface AppSettings {

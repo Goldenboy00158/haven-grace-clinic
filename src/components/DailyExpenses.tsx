@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, DollarSign, Calendar, Receipt, Trash2, Edit, TrendingDown, AlertTriangle, PieChart, Filter, Download, Zap, Package, Utensils, Car, Wrench, Users, MoreHorizontal } from 'lucide-react';
+import { Plus, DollarSign, Calendar, Receipt, Trash2, Edit, TrendingDown, AlertTriangle, PieChart, Filter, Download, Zap, Package, Utensils, Car, Wrench, Users, MoreHorizontal, BarChart3 } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { DailyExpense, Transaction } from '../types';
 
@@ -15,6 +15,7 @@ export default function DailyExpenses({ isReviewMode = false }: DailyExpensesPro
   const [editingExpense, setEditingExpense] = useState<DailyExpense | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [showMonthlyView, setShowMonthlyView] = useState(false);
   
   const [newExpense, setNewExpense] = useState({
     category: 'utilities' as DailyExpense['category'],
@@ -86,6 +87,17 @@ export default function DailyExpenses({ isReviewMode = false }: DailyExpensesPro
     });
   }, [expenses, selectedDate, selectedCategory]);
 
+  // Calculate monthly expenses
+  const monthlyExpenses = useMemo(() => {
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    return expenses.filter(expense => {
+      const expenseDate = new Date(expense.date);
+      return expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear;
+    });
+  }, [expenses]);
+
   // Calculate daily totals
   const dailyTotals = useMemo(() => {
     const dailyExpenses = expenses.filter(exp => exp.date === selectedDate);
@@ -113,6 +125,38 @@ export default function DailyExpenses({ isReviewMode = false }: DailyExpensesPro
       expenseCount: dailyExpenses.length
     };
   }, [expenses, transactions, selectedDate]);
+
+  // Calculate monthly totals
+  const monthlyTotals = useMemo(() => {
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    const monthlyExpenseTotal = monthlyExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const monthlyTransactions = transactions.filter(trans => {
+      const transDate = new Date(trans.date);
+      return transDate.getMonth() === currentMonth && 
+             transDate.getFullYear() === currentYear && 
+             trans.status === 'completed';
+    });
+    
+    const monthlyRevenue = monthlyTransactions.reduce((sum, trans) => sum + trans.totalAmount, 0);
+    const monthlyNetProfit = monthlyRevenue - monthlyExpenseTotal;
+
+    // Monthly expenses by category
+    const monthlyExpensesByCategory = monthlyExpenses.reduce((acc, exp) => {
+      acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      totalExpenses: monthlyExpenseTotal,
+      totalRevenue: monthlyRevenue,
+      netProfit: monthlyNetProfit,
+      expensesByCategory: monthlyExpensesByCategory,
+      transactionCount: monthlyTransactions.length,
+      expenseCount: monthlyExpenses.length
+    };
+  }, [monthlyExpenses, transactions]);
 
   const handleAddExpense = () => {
     if (!newExpense.description || newExpense.amount <= 0) {
@@ -189,9 +233,10 @@ export default function DailyExpenses({ isReviewMode = false }: DailyExpensesPro
   };
 
   const exportExpenses = () => {
+    const dataToExport = showMonthlyView ? monthlyExpenses : filteredExpenses;
     const csvContent = [
       ['Date', 'Category', 'Description', 'Amount (KES)', 'Payment Method', 'Added By', 'Notes'],
-      ...filteredExpenses.map(expense => [
+      ...dataToExport.map(expense => [
         expense.date,
         expense.category,
         expense.description,
@@ -206,7 +251,7 @@ export default function DailyExpenses({ isReviewMode = false }: DailyExpensesPro
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `expenses-${selectedDate}.csv`;
+    a.download = `expenses-${showMonthlyView ? 'monthly' : selectedDate}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -221,6 +266,9 @@ export default function DailyExpenses({ isReviewMode = false }: DailyExpensesPro
     return category?.color || 'bg-gray-100 text-gray-800';
   };
 
+  const currentTotals = showMonthlyView ? monthlyTotals : dailyTotals;
+  const currentExpenses = showMonthlyView ? monthlyExpenses : filteredExpenses;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -233,6 +281,17 @@ export default function DailyExpenses({ isReviewMode = false }: DailyExpensesPro
           <p className="text-gray-600">Track daily operational expenses and calculate net profit</p>
         </div>
         <div className="flex space-x-3">
+          <button
+            onClick={() => setShowMonthlyView(!showMonthlyView)}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
+              showMonthlyView 
+                ? 'bg-purple-600 text-white' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <BarChart3 className="h-4 w-4" />
+            <span>{showMonthlyView ? 'Monthly View' : 'Daily View'}</span>
+          </button>
           <button
             onClick={exportExpenses}
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
@@ -253,43 +312,47 @@ export default function DailyExpenses({ isReviewMode = false }: DailyExpensesPro
       </div>
 
       {/* Date and Category Filters */}
-      <div className="bg-white rounded-xl shadow-sm border p-6">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex items-center space-x-2">
-            <Calendar className="h-5 w-5 text-gray-400" />
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          <div className="flex items-center space-x-2">
-            <Filter className="h-5 w-5 text-gray-400" />
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">All Categories</option>
-              {expenseCategories.map(category => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
+      {!showMonthlyView && (
+        <div className="bg-white rounded-xl shadow-sm border p-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5 text-gray-400" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Filter className="h-5 w-5 text-gray-400" />
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">All Categories</option>
+                {expenseCategories.map(category => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Daily Summary Cards */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl p-6 shadow-sm border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Daily Revenue</p>
-              <p className="text-2xl font-bold text-green-600">KES {dailyTotals.totalRevenue.toLocaleString()}</p>
-              <p className="text-sm text-gray-500">{dailyTotals.transactionCount} transactions</p>
+              <p className="text-sm font-medium text-gray-600">
+                {showMonthlyView ? 'Monthly Revenue' : 'Daily Revenue'}
+              </p>
+              <p className="text-2xl font-bold text-green-600">KES {currentTotals.totalRevenue.toLocaleString()}</p>
+              <p className="text-sm text-gray-500">{currentTotals.transactionCount} transactions</p>
             </div>
             <div className="bg-green-100 p-3 rounded-lg">
               <DollarSign className="h-6 w-6 text-green-600" />
@@ -300,9 +363,11 @@ export default function DailyExpenses({ isReviewMode = false }: DailyExpensesPro
         <div className="bg-white rounded-xl p-6 shadow-sm border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Daily Expenses</p>
-              <p className="text-2xl font-bold text-red-600">KES {dailyTotals.totalExpenses.toLocaleString()}</p>
-              <p className="text-sm text-gray-500">{dailyTotals.expenseCount} expenses</p>
+              <p className="text-sm font-medium text-gray-600">
+                {showMonthlyView ? 'Monthly Expenses' : 'Daily Expenses'}
+              </p>
+              <p className="text-2xl font-bold text-red-600">KES {currentTotals.totalExpenses.toLocaleString()}</p>
+              <p className="text-sm text-gray-500">{currentTotals.expenseCount} expenses</p>
             </div>
             <div className="bg-red-100 p-3 rounded-lg">
               <TrendingDown className="h-6 w-6 text-red-600" />
@@ -314,15 +379,15 @@ export default function DailyExpenses({ isReviewMode = false }: DailyExpensesPro
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Net Profit</p>
-              <p className={`text-2xl font-bold ${dailyTotals.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                KES {dailyTotals.netProfit.toLocaleString()}
+              <p className={`text-2xl font-bold ${currentTotals.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                KES {currentTotals.netProfit.toLocaleString()}
               </p>
               <p className="text-sm text-gray-500">
-                {dailyTotals.netProfit >= 0 ? 'Profit' : 'Loss'}
+                {currentTotals.netProfit >= 0 ? 'Profit' : 'Loss'}
               </p>
             </div>
-            <div className={`p-3 rounded-lg ${dailyTotals.netProfit >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-              <PieChart className={`h-6 w-6 ${dailyTotals.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+            <div className={`p-3 rounded-lg ${currentTotals.netProfit >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+              <PieChart className={`h-6 w-6 ${currentTotals.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
             </div>
           </div>
         </div>
@@ -331,16 +396,16 @@ export default function DailyExpenses({ isReviewMode = false }: DailyExpensesPro
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Profit Margin</p>
-              <p className={`text-2xl font-bold ${dailyTotals.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {dailyTotals.totalRevenue > 0 
-                  ? `${((dailyTotals.netProfit / dailyTotals.totalRevenue) * 100).toFixed(1)}%`
+              <p className={`text-2xl font-bold ${currentTotals.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {currentTotals.totalRevenue > 0 
+                  ? `${((currentTotals.netProfit / currentTotals.totalRevenue) * 100).toFixed(1)}%`
                   : '0%'
                 }
               </p>
               <p className="text-sm text-gray-500">Revenue efficiency</p>
             </div>
-            <div className={`p-3 rounded-lg ${dailyTotals.netProfit >= 0 ? 'bg-blue-100' : 'bg-orange-100'}`}>
-              <AlertTriangle className={`h-6 w-6 ${dailyTotals.netProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`} />
+            <div className={`p-3 rounded-lg ${currentTotals.netProfit >= 0 ? 'bg-blue-100' : 'bg-orange-100'}`}>
+              <AlertTriangle className={`h-6 w-6 ${currentTotals.netProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`} />
             </div>
           </div>
         </div>
@@ -348,13 +413,15 @@ export default function DailyExpenses({ isReviewMode = false }: DailyExpensesPro
 
       {/* Expenses by Category */}
       <div className="bg-white rounded-xl shadow-sm border p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Expenses by Category</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Expenses by Category {showMonthlyView ? '(This Month)' : `(${new Date(selectedDate).toLocaleDateString()})`}
+        </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
           {expenseCategories.map(category => {
             const Icon = category.icon;
-            const amount = dailyTotals.expensesByCategory[category.id] || 0;
-            const percentage = dailyTotals.totalExpenses > 0 
-              ? ((amount / dailyTotals.totalExpenses) * 100).toFixed(1)
+            const amount = currentTotals.expensesByCategory[category.id] || 0;
+            const percentage = currentTotals.totalExpenses > 0 
+              ? ((amount / currentTotals.totalExpenses) * 100).toFixed(1)
               : '0';
             
             return (
@@ -375,13 +442,17 @@ export default function DailyExpenses({ isReviewMode = false }: DailyExpensesPro
       <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
         <div className="p-6 border-b">
           <h3 className="text-lg font-semibold text-gray-900">
-            Expenses for {new Date(selectedDate).toLocaleDateString()}
+            {showMonthlyView 
+              ? `Monthly Expenses (${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})`
+              : `Expenses for ${new Date(selectedDate).toLocaleDateString()}`
+            }
           </h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
+                <th className="text-left py-4 px-6 font-semibold text-gray-900">Date</th>
                 <th className="text-left py-4 px-6 font-semibold text-gray-900">Category</th>
                 <th className="text-left py-4 px-6 font-semibold text-gray-900">Description</th>
                 <th className="text-left py-4 px-6 font-semibold text-gray-900">Amount</th>
@@ -393,10 +464,13 @@ export default function DailyExpenses({ isReviewMode = false }: DailyExpensesPro
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredExpenses.map((expense) => {
+              {currentExpenses.map((expense) => {
                 const Icon = getCategoryIcon(expense.category);
                 return (
                   <tr key={expense.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="py-4 px-6 text-gray-700">
+                      {new Date(expense.date).toLocaleDateString()}
+                    </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center space-x-3">
                         <div className={`p-2 rounded-lg ${getCategoryColor(expense.category)}`}>
@@ -460,10 +534,12 @@ export default function DailyExpenses({ isReviewMode = false }: DailyExpensesPro
           </table>
         </div>
         
-        {filteredExpenses.length === 0 && (
+        {currentExpenses.length === 0 && (
           <div className="text-center py-8">
             <TrendingDown className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No expenses recorded for this date.</p>
+            <p className="text-gray-500">
+              No expenses recorded for this {showMonthlyView ? 'month' : 'date'}.
+            </p>
           </div>
         )}
       </div>
