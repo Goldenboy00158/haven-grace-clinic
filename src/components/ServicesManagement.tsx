@@ -513,14 +513,14 @@ export default function ServicesManagement({ isReviewMode = false }: ServicesMan
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="form-group mb-4">
-  <label className="block text-sm font-medium text-gray-700 mb-1">
-    Service Name *
-  </label>
-  <input
-    type="text"
-    placeholder="Service Name"
-    value={newService.name}
-    onChange={(e) => setNewService(prev => ({ ...prev, name: e.target.value }))}
-    className="form-input"
-  />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Service Name *</label>
+                  <input
+                    type="text"
+                    value={newService.name}
+                    onChange={(e) => setNewService(prev => ({ ...prev, name: e.target.value }))}
+                    className="w
+                    />
+      )}
+    </div>
+  );
+}
