@@ -523,3 +523,4 @@ export default function ServicesManagement({ isReviewMode = false }: ServicesMan
     onChange={(e) => setNewService(prev => ({ ...prev, name: e.target.value }))}
     className="form-input"
   />
+</div>
