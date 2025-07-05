@@ -529,3 +529,9 @@ export default function ServicesManagement({ isReviewMode = false }: ServicesMan
 </div>
 {/* Close root div */}
 </div>
+          </div>
+    </div>
+  </div>
+</div>
+);
+}
