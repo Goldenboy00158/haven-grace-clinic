@@ -523,8 +523,9 @@ export default function ServicesManagement({ isReviewMode = false }: ServicesMan
   </div>
 </div>
 </div> {/* AddModal Wrapper */}
-</div> {/* Possibly the whole modal wrapper or parent container */}
-</div> {/* Main container if any */}
-</div> {/* Close root div */}
-);
-} 
+{/* Possibly the whole modal wrapper or parent container */}
+</div>
+{/* Main container if any */}
+</div>
+{/* Close root div */}
+</div>
