@@ -487,40 +487,46 @@ export default function ServicesManagement({ isReviewMode = false }: ServicesMan
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-gray-900">
-                {editingService ? 'Edit Service' : 'Add New Service'}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setEditingService(null);
-                  setNewService({
-                    name: '',
-                    price: 0,
-                    category: 'procedures',
-                    description: '',
-                    severity: 'mild',
-                    duration: 15,
-                    requirements: []
-                  });
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
+           <h3 className="text-xl font-semibold text-gray-900">
+  {editingService ? 'Edit Service' : 'Add New Service'}
+</h3>
+<button
+  onClick={() => {
+    setShowAddModal(false);
+    setEditingService(null);
+    setNewService({
+      name: '',
+      price: 0,
+      category: 'procedures',
+      description: '',
+      severity: 'mild',
+      duration: 15,
+      requirements: []
+    });
+  }}
+  className="text-gray-400 hover:text-gray-600"
+>
+  <X className="h-6 w-6" />
+</button>
+</div>
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Service Name *</label>
-                  <input
-                    type="text"
-                    value={newService.name}
-                    onChange={(e) => setNewService(prev => ({ ...prev, name: e.target.value }))}
-                    className="w
-                    />
-      )}
+<div className="space-y-4">
+  <div className="grid grid-cols-2 gap-4">
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">Service Name *</label>
+      <input
+        type="text"
+        value={newService.name}
+        onChange={(e) => setNewService(prev => ({ ...prev, name: e.target.value }))}
+        className="form-input w-full"
+      />
     </div>
-  );
-}
+  </div>
+</div>
+</div> {/* AddModal Wrapper */}
+</div> {/* Possibly the whole modal wrapper or parent container */}
+</div> {/* Main container if any */}
+
+</div> {/* Close root div */}
+);
+} 
