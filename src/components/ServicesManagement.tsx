@@ -509,7 +509,6 @@ export default function ServicesManagement({ isReviewMode = false }: ServicesMan
   <X className="h-6 w-6" />
 </button>
 </div>
-
 <div className="space-y-4">
   <div className="grid grid-cols-2 gap-4">
     <div>
@@ -526,7 +525,6 @@ export default function ServicesManagement({ isReviewMode = false }: ServicesMan
 </div> {/* AddModal Wrapper */}
 </div> {/* Possibly the whole modal wrapper or parent container */}
 </div> {/* Main container if any */}
-
 </div> {/* Close root div */}
 );
 } 
