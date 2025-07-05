@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Users, FileText, BarChart3, Menu, X, Settings as SettingsIcon, Stethoscope, Heart, Bot, TrendingDown } from 'lucide-react';
+import { Package, Users, FileText, BarChart3, Menu, X, Settings as SettingsIcon, Stethoscope, Heart, Bot, TrendingDown, Activity } from 'lucide-react';
 import InventoryManagement from './components/InventoryManagement';
 import PatientManagement from './components/PatientManagement';
 import TransactionHistory from './components/TransactionHistory';
@@ -10,6 +10,7 @@ import ServicesManagement from './components/ServicesManagement';
 import FamilyPlanningServices from './components/FamilyPlanningServices';
 import AIAssistant from './components/AIAssistant';
 import DailyExpenses from './components/DailyExpenses';
+import AnalyticsDashboard from './components/AnalyticsDashboard';
 import ReviewModeToggle from './components/ReviewModeToggle';
 
 function App() {
@@ -48,6 +49,7 @@ function App() {
     { id: 'family-planning', name: 'Family Planning', icon: Heart },
     { id: 'transactions', name: 'Transactions', icon: FileText },
     { id: 'expenses', name: 'Daily Expenses', icon: TrendingDown },
+    { id: 'analytics', name: 'Analytics', icon: Activity },
     { id: 'ai-assistant', name: 'AI Assistant', icon: Bot },
     { id: 'settings', name: 'Settings', icon: SettingsIcon },
   ];
@@ -73,6 +75,8 @@ function App() {
         return <TransactionHistory isReviewMode={isReviewMode} />;
       case 'expenses':
         return <DailyExpenses isReviewMode={isReviewMode} />;
+      case 'analytics':
+        return <AnalyticsDashboard />;
       case 'ai-assistant':
         return <AIAssistant />;
       case 'settings':
