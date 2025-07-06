@@ -4,28 +4,31 @@ import InventoryManagement from './components/InventoryManagement';
 import PatientManagement from './components/PatientManagement';
 import TransactionHistory from './components/TransactionHistory';
 import Dashboard from './components/Dashboard';
-import ShareableView from './components/ShareableView';
-import Settings from './components/Settings';
+import RealTimeShareableView from './components/RealTimeShareableView';
+import RealTimeSettings from './components/RealTimeSettings';
 import ServicesManagement from './components/ServicesManagement';
 import FamilyPlanningServices from './components/FamilyPlanningServices';
 import AIAssistant from './components/AIAssistant';
 import DailyExpenses from './components/DailyExpenses';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import ReviewModeToggle from './components/ReviewModeToggle';
+import EnhancedShareLinkGenerator from './components/EnhancedShareLinkGenerator';
+import QuickPrintButton from './components/QuickPrintButton';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isReviewMode, setIsReviewMode] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Check if this is a shared view
   const urlPath = window.location.pathname;
   const isSharedView = urlPath.startsWith('/share/');
-  const shareId = isSharedView ? urlPath.split('/share/')[1] : null;
+  const shareId = isSharedView ? urlPath.split('/share/')[1].split('?')[0] : null;
 
-  // If it's a shared view, render the ShareableView component
+  // If it's a shared view, render the RealTimeShareableView component
   if (isSharedView && shareId) {
-    return <ShareableView shareId={shareId} />;
+    return <RealTimeShareableView shareId={shareId} />;
   }
 
   // Listen for navigation events from Settings
@@ -59,10 +62,20 @@ function App() {
     setIsMobileMenuOpen(false);
   };
 
+  const getContextForPrint = () => {
+    switch (activeTab) {
+      case 'inventory': return 'inventory';
+      case 'patients': return 'patients';
+      case 'transactions': return 'transactions';
+      case 'dashboard': return 'dashboard';
+      default: return undefined;
+    }
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard onNavigate={handleNavigate} isReviewMode={isReviewMode} />;
+        return <Dashboard onNavigate={handleNavigate} isReviewMode={isReviewMode} onShowShare={() => setShowShareModal(true)} />;
       case 'inventory':
         return <InventoryManagement isReviewMode={isReviewMode} />;
       case 'patients':
@@ -80,9 +93,9 @@ function App() {
       case 'ai-assistant':
         return <AIAssistant />;
       case 'settings':
-        return <Settings isReviewMode={isReviewMode} />;
+        return <RealTimeSettings isReviewMode={isReviewMode} />;
       default:
-        return <Dashboard onNavigate={handleNavigate} isReviewMode={isReviewMode} />;
+        return <Dashboard onNavigate={handleNavigate} isReviewMode={isReviewMode} onShowShare={() => setShowShareModal(true)} />;
     }
   };
 
@@ -105,6 +118,13 @@ function App() {
             </div>
 
             <div className="flex items-center space-x-4">
+              {/* Print Button */}
+              <QuickPrintButton 
+                variant="icon" 
+                context={getContextForPrint()}
+                className="hidden md:block"
+              />
+
               {/* Review Mode Toggle */}
               <ReviewModeToggle 
                 isReviewMode={isReviewMode} 
@@ -151,6 +171,15 @@ function App() {
           {/* Mobile Navigation */}
           {isMobileMenuOpen && (
             <div className="md:hidden bg-white rounded-lg shadow-lg mt-2">
+              {/* Print Button for Mobile */}
+              <div className="p-4 border-b">
+                <QuickPrintButton 
+                  variant="button" 
+                  context={getContextForPrint()}
+                  className="w-full justify-center"
+                />
+              </div>
+
               {/* Review Mode Toggle for Mobile */}
               <div className="p-4 border-b">
                 <ReviewModeToggle 
@@ -189,6 +218,17 @@ function App() {
           {renderContent()}
         </div>
       </div>
+
+      {/* Floating Print Button */}
+      <QuickPrintButton 
+        variant="fab" 
+        context={getContextForPrint()}
+      />
+
+      {/* Enhanced Share Modal */}
+      {showShareModal && (
+        <EnhancedShareLinkGenerator onClose={() => setShowShareModal(false)} />
+      )}
     </div>
   );
 }

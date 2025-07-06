@@ -1,21 +1,21 @@
 import React from 'react';
-import { Package, Users, TrendingUp, AlertTriangle, DollarSign, Activity, Share, TrendingDown } from 'lucide-react';
+import { Package, Users, TrendingUp, AlertTriangle, DollarSign, Activity, Share, TrendingDown, Printer } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { medications } from '../data/medications';
 import { Patient, Transaction, Medication, DailyExpense } from '../types';
-import ShareLinkGenerator from './ShareLinkGenerator';
+import QuickPrintButton from './QuickPrintButton';
 
 interface DashboardProps {
   onNavigate?: (tab: string) => void;
   isReviewMode?: boolean;
+  onShowShare?: () => void;
 }
 
-export default function Dashboard({ onNavigate, isReviewMode }: DashboardProps) {
+export default function Dashboard({ onNavigate, isReviewMode, onShowShare }: DashboardProps) {
   const [medicationData] = useLocalStorage<Medication[]>('clinic-medications', medications);
   const [patients] = useLocalStorage<Patient[]>('clinic-patients', []);
   const [transactions] = useLocalStorage<Transaction[]>('clinic-transactions', []);
   const [expenses] = useLocalStorage<DailyExpense[]>('clinic-expenses', []);
-  const [showShareModal, setShowShareModal] = React.useState(false);
 
   // Calculate stats
   const totalMedications = medicationData.length;
@@ -129,21 +129,28 @@ export default function Dashboard({ onNavigate, isReviewMode }: DashboardProps) 
 
   return (
     <div className="space-y-6">
-      {/* Header with Share Button */}
+      {/* Header with Share and Print Buttons */}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Dashboard Overview</h2>
           <p className="text-gray-600">Monitor your clinic's performance and key metrics</p>
         </div>
-        {!isReviewMode && (
-          <button
-            onClick={() => setShowShareModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-          >
-            <Share className="h-4 w-4" />
-            <span>Share Dashboard</span>
-          </button>
-        )}
+        <div className="flex space-x-3">
+          <QuickPrintButton 
+            variant="button" 
+            context="dashboard"
+            className="hidden md:flex"
+          />
+          {!isReviewMode && onShowShare && (
+            <button
+              onClick={onShowShare}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+            >
+              <Share className="h-4 w-4" />
+              <span>Real-time Share</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -173,7 +180,13 @@ export default function Dashboard({ onNavigate, isReviewMode }: DashboardProps) 
 
       {/* Profit Analysis Card */}
       <div className="bg-white rounded-xl p-6 shadow-sm border">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Today's Financial Summary</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Today's Financial Summary</h3>
+          <QuickPrintButton 
+            variant="icon" 
+            context="dashboard"
+          />
+        </div>
         <div className="grid md:grid-cols-3 gap-6">
           <div className="text-center p-4 bg-green-50 rounded-lg">
             <DollarSign className="h-8 w-8 text-green-600 mx-auto mb-2" />
@@ -209,7 +222,10 @@ export default function Dashboard({ onNavigate, isReviewMode }: DashboardProps) 
         <div className="bg-white rounded-xl p-6 shadow-sm border">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Recent Transactions</h3>
-            <Activity className="h-5 w-5 text-gray-400" />
+            <div className="flex space-x-2">
+              <QuickPrintButton variant="icon" context="transactions" />
+              <Activity className="h-5 w-5 text-gray-400" />
+            </div>
           </div>
           <div className="space-y-3">
             {recentTransactionsList.length > 0 ? (
@@ -245,7 +261,10 @@ export default function Dashboard({ onNavigate, isReviewMode }: DashboardProps) 
         <div className="bg-white rounded-xl p-6 shadow-sm border">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Critical Stock Alerts</h3>
-            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <div className="flex space-x-2">
+              <QuickPrintButton variant="icon" context="inventory" />
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+            </div>
           </div>
           <div className="space-y-3">
             {criticalStockItems.length > 0 ? (
@@ -270,7 +289,10 @@ export default function Dashboard({ onNavigate, isReviewMode }: DashboardProps) 
 
       {/* Quick Actions */}
       <div className="bg-white rounded-xl p-6 shadow-sm border">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
+          <QuickPrintButton variant="icon" />
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <button 
             onClick={() => onNavigate?.('inventory')}
@@ -309,11 +331,6 @@ export default function Dashboard({ onNavigate, isReviewMode }: DashboardProps) 
           </button>
         </div>
       </div>
-
-      {/* Share Modal */}
-      {showShareModal && (
-        <ShareLinkGenerator onClose={() => setShowShareModal(false)} />
-      )}
     </div>
   );
 }
