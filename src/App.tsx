@@ -5,7 +5,7 @@ import PatientManagement from './components/PatientManagement';
 import TransactionHistory from './components/TransactionHistory';
 import Dashboard from './components/Dashboard';
 import RealTimeShareableView from './components/RealTimeShareableView';
-import RealTimeSettings from './components/RealTimeSettings';
+import Settings from './components/Settings';
 import ServicesManagement from './components/ServicesManagement';
 import FamilyPlanningServices from './components/FamilyPlanningServices';
 import AIAssistant from './components/AIAssistant';
@@ -93,7 +93,7 @@ function App() {
       case 'ai-assistant':
         return <AIAssistant />;
       case 'settings':
-        return <RealTimeSettings isReviewMode={isReviewMode} />;
+        return <Settings isReviewMode={isReviewMode} />;
       default:
         return <Dashboard onNavigate={handleNavigate} isReviewMode={isReviewMode} onShowShare={() => setShowShareModal(true)} />;
     }
