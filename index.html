@@ -7,34 +7,31 @@
     <title>Haven Grace Medical Clinic - Compassionate Healthcare</title>
     <meta name="description" content="Haven Grace Medical Clinic provides comprehensive healthcare services with experienced physicians, modern facilities, and compassionate care for patients of all ages.">
     <meta name="keywords" content="medical clinic, healthcare, doctors, cardiology, neurology, pediatrics, orthopedics, internal medicine">
-  <!-- Load the Mpesa Standalone Script -->
-<script src="mpesa-standalone.js"></script>
 
-<!-- Payment Form Container -->
-<div id="payment-form"></div>
-
-<!-- Initialize Mpesa -->
-<script>
-<script src="/public/js/mpesa-standalone.js"></script>
-    <script>
-  const mpesa = new window.MpesaStandalone({
-    consumerKey: 'your-key',
-    // ...
-  });
-  mpesa.render('payment-form');
-</script>
-    consumerKey: 'your-key',              // from Safaricom developer portal
-    consumerSecret: 'your-secret',        // from Safaricom developer portal
-    businessShortCode: '174379',          // replace with your shortcode
-    passkey: 'your-passkey',              // from Safaricom portal
-    environment: 'sandbox'                // use 'production' when live
-  });
-
-  mpesa.render('payment-form');
-</script>
+    <!-- ✅ Load the Mpesa Standalone Script -->
+    <script src="/public/js/mpesa-standalone.js"></script>
   </head>
+
   <body>
     <div id="root"></div>
+
+    <!-- ✅ Payment Form Container -->
+    <div id="payment-form"></div>
+
+    <!-- ✅ Initialize Mpesa -->
+    <script>
+      const mpesa = new window.MpesaStandalone({
+        consumerKey: 'your-key',              // Replace with actual key
+        consumerSecret: 'your-secret',        // Replace with actual secret
+        businessShortCode: '174379',          // Your shortcode
+        passkey: 'your-passkey',              // Replace with your passkey
+        environment: 'sandbox'                // Or 'production'
+      });
+
+      mpesa.render('payment-form');
+    </script>
+
+    <!-- ✅ Main React/Vite App -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
