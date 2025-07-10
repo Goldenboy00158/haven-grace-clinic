@@ -16,6 +16,13 @@
 <!-- Initialize Mpesa -->
 <script>
 <script src="/public/js/mpesa-standalone.js"></script>
+    <script>
+  const mpesa = new window.MpesaStandalone({
+    consumerKey: 'your-key',
+    // ...
+  });
+  mpesa.render('payment-form');
+</script>
     consumerKey: 'your-key',              // from Safaricom developer portal
     consumerSecret: 'your-secret',        // from Safaricom developer portal
     businessShortCode: '174379',          // replace with your shortcode
