@@ -7,6 +7,25 @@
     <title>Haven Grace Medical Clinic - Compassionate Healthcare</title>
     <meta name="description" content="Haven Grace Medical Clinic provides comprehensive healthcare services with experienced physicians, modern facilities, and compassionate care for patients of all ages.">
     <meta name="keywords" content="medical clinic, healthcare, doctors, cardiology, neurology, pediatrics, orthopedics, internal medicine">
+  <!-- Load the Mpesa Standalone Script -->
+<script src="mpesa-standalone.js"></script>
+
+<!-- Payment Form Container -->
+<div id="payment-form"></div>
+
+<!-- Initialize Mpesa -->
+<script>
+  const mpesa = new MpesaStandalone({
+    consumerKey: 'your-key',              // from Safaricom developer portal
+    consumerSecret: 'your-secret',        // from Safaricom developer portal
+    businessShortCode: '174379',          // replace with your shortcode
+    passkey: 'your-passkey',              // from Safaricom portal
+    environment: 'sandbox'                // use 'production' when live
+  });
+
+  mpesa.render('payment-form');
+</script>
+
   </head>
   <body>
     <div id="root"></div>
