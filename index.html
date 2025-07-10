@@ -8,30 +8,34 @@
     <meta name="description" content="Haven Grace Medical Clinic provides comprehensive healthcare services with experienced physicians, modern facilities, and compassionate care for patients of all ages.">
     <meta name="keywords" content="medical clinic, healthcare, doctors, cardiology, neurology, pediatrics, orthopedics, internal medicine">
 
-    <!-- ✅ Load the Mpesa Standalone Script -->
-    <script src="/public/js/mpesa-standalone.js"></script>
+    <!-- ✅ Mpesa script should load from correct path -->
+    <script src="/mpesa-standalone.js"></script>
   </head>
 
   <body>
-    <div id="root"></div>
-
-    <!-- ✅ Payment Form Container -->
+    <!-- ✅ This div is where the payment UI will render -->
     <div id="payment-form"></div>
 
-    <!-- ✅ Initialize Mpesa -->
+    <!-- ✅ Mpesa Initialization -->
     <script>
-      const mpesa = new window.MpesaStandalone({
-        consumerKey: 'your-key',              // Replace with actual key
-        consumerSecret: 'your-secret',        // Replace with actual secret
-        businessShortCode: '174379',          // Your shortcode
-        passkey: 'your-passkey',              // Replace with your passkey
-        environment: 'sandbox'                // Or 'production'
+      document.addEventListener('DOMContentLoaded', function () {
+        if (typeof window.MpesaStandalone === "function") {
+          const mpesa = new window.MpesaStandalone({
+            consumerKey: 'your-key',
+            consumerSecret: 'your-secret',
+            businessShortCode: '174379',
+            passkey: 'your-passkey',
+            environment: 'sandbox'
+          });
+          mpesa.render('payment-form');
+        } else {
+          console.error("❌ MpesaStandalone is not defined or not loaded correctly.");
+        }
       });
-
-      mpesa.render('payment-form');
     </script>
 
-    <!-- ✅ Main React/Vite App -->
+    <!-- ✅ Load your main Vite app -->
+    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
