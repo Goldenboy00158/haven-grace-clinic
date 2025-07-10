@@ -29,7 +29,6 @@
           });
           mpesa.render('payment-form');
         } else {
-          console.error("❌ MpesaStandalone is not defined or not loaded correctly.");
         }
       });
     </script>
