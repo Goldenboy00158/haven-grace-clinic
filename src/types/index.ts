@@ -116,6 +116,33 @@ export interface SaleItem {
   discountValue?: number;
 }
 
+export interface ServiceItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  totalCost: number;
+  description: string;
+  originalPrice?: number;
+  discountType?: 'percentage' | 'fixed';
+  discountValue?: number;
+}
+
+export interface ClinicalService {
+  id: string;
+  name: string;
+  price: number;
+  category: 'general_medicine' | 'diagnostics' | 'procedures' | 'consultations' | 'family_planning';
+  description: string;
+  duration?: number;
+  requirements?: string[];
+  severity?: 'mild' | 'moderate' | 'severe';
+}
+
+export interface ServicesManagementProps {
+  isReviewMode?: boolean;
+}
+
 export interface AppSettings {
   clinicName: string;
   clinicAddress: string;

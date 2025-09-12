@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Printer, FileText, Package, Users, DollarSign } from 'lucide-react';
+import { Printer, FileText, Package, Users, DollarSign, TrendingDown, Activity, Heart } from 'lucide-react';
 import PrintManager from './PrintManager';
 
 interface QuickPrintButtonProps {
   variant?: 'button' | 'icon' | 'fab';
   className?: string;
-  context?: 'inventory' | 'patients' | 'transactions' | 'dashboard';
+  context?: 'inventory' | 'patients' | 'transactions' | 'dashboard' | 'expenses' | 'analytics' | 'services' | 'family-planning';
 }
 
 export default function QuickPrintButton({ 
@@ -22,10 +22,71 @@ export default function QuickPrintButton({
       inventory: () => printInventoryReport(),
       patients: () => printPatientSummary(),
       transactions: () => printFinancialReport(),
-      dashboard: () => printDailyReport()
+      dashboard: () => printDailyReport(),
+      expenses: () => printExpensesReport(),
+      analytics: () => printAnalyticsReport(),
+      services: () => printServicesReport(),
+      'family-planning': () => printFamilyPlanningReport()
     };
 
     return contextActions[context];
+  };
+
+  const printExpensesReport = () => {
+    const expenses = JSON.parse(localStorage.getItem('clinic-expenses') || '[]');
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const content = generateExpensesReportContent(expenses);
+    printWindow.document.write(content);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
+  };
+
+  const printAnalyticsReport = () => {
+    const patients = JSON.parse(localStorage.getItem('clinic-patients') || '[]');
+    const transactions = JSON.parse(localStorage.getItem('clinic-transactions') || '[]');
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const content = generateAnalyticsReportContent(patients, transactions);
+    printWindow.document.write(content);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
+  };
+
+  const printServicesReport = () => {
+    const services = JSON.parse(localStorage.getItem('clinic-clinical-services') || '[]');
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const content = generateServicesReportContent(services);
+    printWindow.document.write(content);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
+  };
+
+  const printFamilyPlanningReport = () => {
+    const fpServices = JSON.parse(localStorage.getItem('clinic-fp-services') || '[]');
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const content = generateFamilyPlanningReportContent(fpServices);
+    printWindow.document.write(content);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
   };
 
   const printInventoryReport = () => {
@@ -321,6 +382,180 @@ export default function QuickPrintButton({
     `;
   };
 
+  const generateExpensesReportContent = (expenses: any[]) => {
+    const clinicSettings = JSON.parse(localStorage.getItem('clinic-settings') || '{}');
+    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Expenses Report</title>
+          <style>${getQuickPrintStyles()}</style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>${clinicSettings.clinicName || 'Haven Grace Medical Clinic'}</h1>
+            <h2>Daily Expenses Report</h2>
+            <p>Generated on: ${new Date().toLocaleString()}</p>
+            <p>Total Expenses: KES ${totalExpenses.toLocaleString()}</p>
+          </div>
+          
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Amount (KES)</th>
+                <th>Payment Method</th>
+                <th>Added By</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${expenses.map(exp => `
+                <tr>
+                  <td>${new Date(exp.date).toLocaleDateString()}</td>
+                  <td>${exp.category.replace('_', ' ')}</td>
+                  <td>${exp.description}</td>
+                  <td>${exp.amount.toFixed(2)}</td>
+                  <td>${exp.paymentMethod}</td>
+                  <td>${exp.addedBy}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+  };
+
+  const generateAnalyticsReportContent = (patients: any[], transactions: any[]) => {
+    const clinicSettings = JSON.parse(localStorage.getItem('clinic-settings') || '{}');
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Analytics Report</title>
+          <style>${getQuickPrintStyles()}</style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>${clinicSettings.clinicName || 'Haven Grace Medical Clinic'}</h1>
+            <h2>Analytics Report</h2>
+            <p>Generated on: ${new Date().toLocaleString()}</p>
+          </div>
+          
+          <div class="analytics-summary">
+            <div class="summary-item">
+              <h3>Total Patients</h3>
+              <p class="amount">${patients.length}</p>
+            </div>
+            <div class="summary-item">
+              <h3>Total Transactions</h3>
+              <p class="amount">${transactions.length}</p>
+            </div>
+            <div class="summary-item">
+              <h3>Total Revenue</h3>
+              <p class="amount positive">KES ${transactions.reduce((sum: number, t: any) => sum + t.totalAmount, 0).toLocaleString()}</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  };
+
+  const generateServicesReportContent = (services: any[]) => {
+    const clinicSettings = JSON.parse(localStorage.getItem('clinic-settings') || '{}');
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Clinical Services Report</title>
+          <style>${getQuickPrintStyles()}</style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>${clinicSettings.clinicName || 'Haven Grace Medical Clinic'}</h1>
+            <h2>Clinical Services Report</h2>
+            <p>Generated on: ${new Date().toLocaleString()}</p>
+          </div>
+          
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Service Name</th>
+                <th>Category</th>
+                <th>Price (KES)</th>
+                <th>Duration (min)</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${services.map(service => `
+                <tr>
+                  <td>${service.name}</td>
+                  <td>${service.category}</td>
+                  <td>${service.price.toFixed(2)}</td>
+                  <td>${service.duration || 'N/A'}</td>
+                  <td>${service.description}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+  };
+
+  const generateFamilyPlanningReportContent = (fpServices: any[]) => {
+    const clinicSettings = JSON.parse(localStorage.getItem('clinic-settings') || '{}');
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Family Planning Services Report</title>
+          <style>${getQuickPrintStyles()}</style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>${clinicSettings.clinicName || 'Haven Grace Medical Clinic'}</h1>
+            <h2>Family Planning Services Report</h2>
+            <p>Generated on: ${new Date().toLocaleString()}</p>
+          </div>
+          
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Service Name</th>
+                <th>Category</th>
+                <th>Price (KES)</th>
+                <th>Effectiveness</th>
+                <th>Protection</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${fpServices.map(service => `
+                <tr>
+                  <td>${service.name}</td>
+                  <td>${service.category}</td>
+                  <td>${service.price.toFixed(2)}</td>
+                  <td>${service.effectiveness || 'N/A'}</td>
+                  <td>${service.protection || 'N/A'}</td>
+                  <td>${service.description}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+  };
+
   const getQuickPrintStyles = () => {
     return `
       body {
@@ -373,6 +608,15 @@ export default function QuickPrintButton({
       }
       
       .financial-summary {
+        display: flex;
+        justify-content: space-around;
+        margin: 20px 0;
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+      }
+      
+      .analytics-summary {
         display: flex;
         justify-content: space-around;
         margin: 20px 0;

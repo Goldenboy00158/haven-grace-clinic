@@ -8,9 +8,10 @@ interface TCACalculatorProps {
 
 export default function TCACalculator({ onClose, onSchedule }: TCACalculatorProps) {
   const [selectedMethod, setSelectedMethod] = useState('');
-  const [lastServiceDate, setLastServiceDate] = useState('');
+  const [clientVisitDate, setClientVisitDate] = useState(new Date().toISOString().split('T')[0]);
   const [calculatedTCA, setCalculatedTCA] = useState('');
   const [nextDueDate, setNextDueDate] = useState('');
+  const [showCalculation, setShowCalculation] = useState(false);
 
   const familyPlanningMethods = [
     { id: 'depo', name: 'Depo-Provera Injection', duration: 90, unit: 'days' },
@@ -23,28 +24,28 @@ export default function TCACalculator({ onClose, onSchedule }: TCACalculatorProp
   ];
 
   const calculateTCA = () => {
-    if (!selectedMethod || !lastServiceDate) return;
+    if (!selectedMethod || !clientVisitDate) return;
 
     const method = familyPlanningMethods.find(m => m.id === selectedMethod);
     if (!method) return;
 
-    const serviceDate = new Date(lastServiceDate);
-    let tcaDate = new Date(serviceDate);
-    let nextDue = new Date(serviceDate);
+    const visitDate = new Date(clientVisitDate);
+    let nextDue = new Date(visitDate);
 
-    // Calculate next due date based on method duration
+    // Calculate next due date based on method duration from visit date
     if (method.unit === 'days') {
       nextDue.setDate(nextDue.getDate() + method.duration);
-      // TCA is 3 days before the actual due date
-      tcaDate.setDate(nextDue.getDate() - 3);
     } else if (method.unit === 'years') {
       nextDue.setFullYear(nextDue.getFullYear() + method.duration);
-      // TCA is 3 days before the actual due date
-      tcaDate.setDate(nextDue.getDate() - 3);
     }
+
+    // TCA is always 3 days before the actual due date for convenience
+    const tcaDate = new Date(nextDue);
+    tcaDate.setDate(tcaDate.getDate() - 3);
 
     setCalculatedTCA(tcaDate.toISOString().split('T')[0]);
     setNextDueDate(nextDue.toISOString().split('T')[0]);
+    setShowCalculation(true);
   };
 
   const handleSchedule = () => {
@@ -64,7 +65,17 @@ export default function TCACalculator({ onClose, onSchedule }: TCACalculatorProp
     return diffDays;
   };
 
+  const getDaysFromVisit = () => {
+    if (!clientVisitDate || !nextDueDate) return null;
+    const visit = new Date(clientVisitDate);
+    const due = new Date(nextDueDate);
+    const diffTime = due.getTime() - visit.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   const daysUntilTCA = getDaysUntilTCA();
+  const daysFromVisit = getDaysFromVisit();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -103,25 +114,28 @@ export default function TCACalculator({ onClose, onSchedule }: TCACalculatorProp
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Last Service Date
+              Client Visit Date (Starting Point)
             </label>
             <input
               type="date"
-              value={lastServiceDate}
-              onChange={(e) => setLastServiceDate(e.target.value)}
+              value={clientVisitDate}
+              onChange={(e) => setClientVisitDate(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              This is the date the client visited/received the service
+            </p>
           </div>
 
           <button
             onClick={calculateTCA}
-            disabled={!selectedMethod || !lastServiceDate}
+            disabled={!selectedMethod || !clientVisitDate}
             className="w-full bg-pink-600 hover:bg-pink-700 text-white py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Calculate TCA
           </button>
 
-          {calculatedTCA && (
+          {showCalculation && calculatedTCA && (
             <div className="bg-pink-50 border border-pink-200 rounded-lg p-4 space-y-3">
               <div className="flex items-center space-x-2">
                 <Calendar className="h-5 w-5 text-pink-600" />
@@ -129,6 +143,18 @@ export default function TCACalculator({ onClose, onSchedule }: TCACalculatorProp
               </div>
               
               <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Visit Date:</span>
+                  <span className="font-medium text-gray-900">
+                    {new Date(clientVisitDate).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Method Duration:</span>
+                  <span className="font-medium text-gray-900">
+                    {daysFromVisit} days
+                  </span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">TCA Date:</span>
                   <span className="font-medium text-gray-900">
@@ -165,6 +191,11 @@ export default function TCACalculator({ onClose, onSchedule }: TCACalculatorProp
                   </p>
                 </div>
               )}
+
+              <div className="bg-blue-50 p-2 rounded text-xs text-blue-800">
+                <strong>Calculation Logic:</strong> TCA is set 3 days before the actual due date 
+                ({new Date(nextDueDate).toLocaleDateString()}) for appointment scheduling convenience.
+              </div>
             </div>
           )}
 
@@ -187,7 +218,8 @@ export default function TCACalculator({ onClose, onSchedule }: TCACalculatorProp
         </div>
 
         <div className="mt-4 text-xs text-gray-500 bg-gray-50 p-2 rounded">
-          <strong>Note:</strong> TCA (To Come Again) is automatically calculated 3 days before the actual due date to allow for appointment scheduling and patient preparation.
+          <strong>How it works:</strong> Enter the date the client visited/received the service. 
+          The system calculates when the method expires and sets the TCA 3 days before for convenience.
         </div>
       </div>
     </div>

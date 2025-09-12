@@ -5,7 +5,7 @@ import { medications, getStockStatus, getMedicationCategories } from '../data/me
 import { Medication, Patient, Transaction, SaleItem } from '../types';
 import EditMedicationModal from './EditMedicationModal';
 import AddMedicationModal from './AddMedicationModal';
-import DiscountModal from './DiscountModal';
+import CombinedSalesModal from './CombinedSalesModal';
 
 interface InventoryManagementProps {
   isReviewMode?: boolean;
@@ -28,12 +28,6 @@ export default function InventoryManagement({ isReviewMode = false }: InventoryM
   
   // Sale modal states
   const [showSaleModal, setShowSaleModal] = useState(false);
-  const [saleType, setSaleType] = useState<'general' | 'patient'>('general');
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'mpesa' | 'card'>('cash');
-  const [customerName, setCustomerName] = useState('');
-  const [showDiscountModal, setShowDiscountModal] = useState<SaleItem | null>(null);
 
   const categories = getMedicationCategories();
 
@@ -116,82 +110,29 @@ export default function InventoryManagement({ isReviewMode = false }: InventoryM
     );
   };
 
-  const addToSale = (medication: Medication) => {
-    if (medication.stock === 0) return;
-    
-    const existingItem = saleItems.find(item => item.medicationId === medication.id);
-    if (existingItem) {
-      setSaleItems(prev => prev.map(item => 
-        item.medicationId === medication.id 
-          ? { ...item, quantity: item.quantity + 0.5, totalCost: (item.quantity + 0.5) * item.price }
-          : item
-      ));
-    } else {
-      setSaleItems(prev => [...prev, {
-        medicationId: medication.id,
-        medicationName: medication.name,
-        quantity: 0.5,
-        price: medication.price,
-        totalCost: medication.price * 0.5
-      }]);
-    }
-  };
-
-  const updateSaleItemQuantity = (medicationId: string, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      setSaleItems(prev => prev.filter(item => item.medicationId !== medicationId));
-    } else {
-      setSaleItems(prev => prev.map(item => 
-        item.medicationId === medicationId 
-          ? { ...item, quantity: newQuantity, totalCost: newQuantity * (item.originalPrice || item.price) }
-          : item
-      ));
-    }
-  };
-
-  const applyDiscount = (itemId: string, discountType: 'percentage' | 'fixed', discountValue: number) => {
-    setSaleItems(prev => prev.map(item => {
-      if (item.medicationId === itemId) {
-        const originalPrice = item.originalPrice || item.price;
-        let discountedPrice = originalPrice;
-        
-        if (discountType === 'percentage') {
-          discountedPrice = originalPrice - (originalPrice * discountValue / 100);
-        } else {
-          discountedPrice = Math.max(0, originalPrice - discountValue);
-        }
-        
-        return {
-          ...item,
-          originalPrice: originalPrice,
-          price: discountedPrice,
-          totalCost: discountedPrice * item.quantity,
-          discountType,
-          discountValue
-        };
+  const handleSaleComplete = (items: SaleItem[], totalAmount: number, paymentMethod: string, customerInfo: any) => {
+    // Update medication stock for medication items
+    setMedicationData(prev => prev.map(med => {
+      const saleItem = items.find(item => item.id === med.id && item.type === 'medication');
+      if (saleItem) {
+        return { ...med, stock: Math.max(0, med.stock - saleItem.quantity) };
       }
-      return item;
+      return med;
     }));
-  };
-
-  const completeSale = () => {
-    if (saleItems.length === 0) return;
-
-    const totalAmount = saleItems.reduce((sum, item) => sum + item.totalCost, 0);
     
     const transaction: Transaction = {
       id: Date.now().toString(),
-      type: saleType,
-      patientId: selectedPatient?.id,
-      patientName: saleType === 'patient' ? selectedPatient?.name : customerName || 'General Customer',
-      items: saleItems.map(item => ({
-        medicationId: item.medicationId,
-        medicationName: item.medicationName,
+      type: customerInfo.type,
+      patientId: customerInfo.patientId,
+      patientName: customerInfo.patientName,
+      items: items.map(item => ({
+        medicationId: item.id,
+        medicationName: item.name,
         quantity: item.quantity,
         dosage: '',
         frequency: '',
         duration: 0,
-        instructions: '',
+        instructions: item.description,
         price: item.price,
         totalCost: item.totalCost
       })),
@@ -201,23 +142,8 @@ export default function InventoryManagement({ isReviewMode = false }: InventoryM
       status: 'completed'
     };
 
-    // Update stock with decimal support
-    setMedicationData(prev => prev.map(med => {
-      const saleItem = saleItems.find(item => item.medicationId === med.id);
-      if (saleItem) {
-        return { ...med, stock: Math.max(0, med.stock - saleItem.quantity) };
-      }
-      return med;
-    }));
-
     // Save transaction
     setTransactions(prev => [transaction, ...prev]);
-
-    // Reset sale
-    setSaleItems([]);
-    setSelectedPatient(null);
-    setCustomerName('');
-    setShowSaleModal(false);
   };
 
   const exportData = () => {
@@ -244,8 +170,6 @@ export default function InventoryManagement({ isReviewMode = false }: InventoryM
     window.URL.revokeObjectURL(url);
   };
 
-  const totalSaleAmount = saleItems.reduce((sum, item) => sum + item.totalCost, 0);
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -269,7 +193,7 @@ export default function InventoryManagement({ isReviewMode = false }: InventoryM
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
               >
                 <ShoppingCart className="h-4 w-4" />
-                <span>New Sale</span>
+                <span>Combined Sale</span>
               </button>
             </>
           )}
@@ -436,13 +360,6 @@ export default function InventoryManagement({ isReviewMode = false }: InventoryM
                             <Edit className="h-3 w-3" />
                             <span>Edit</span>
                           </button>
-                          <button 
-                            onClick={() => addToSale(medication)}
-                            disabled={medication.stock === 0}
-                            className="bg-green-100 hover:bg-green-200 text-green-600 px-3 py-1 rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Add to Sale
-                          </button>
                         </div>
                       </td>
                     )}
@@ -481,208 +398,11 @@ export default function InventoryManagement({ isReviewMode = false }: InventoryM
         />
       )}
 
-      {/* Sale Modal */}
+      {/* Combined Sale Modal */}
       {showSaleModal && !isReviewMode && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-gray-900">New Sale (Decimal Quantities Supported)</h3>
-                <button
-                  onClick={() => setShowSaleModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ×
-                </button>
-              </div>
-              
-              {/* Sale Type Selection */}
-              <div className="mt-4 flex space-x-4">
-                <button
-                  onClick={() => setSaleType('general')}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                    saleType === 'general' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  <Users className="h-4 w-4" />
-                  <span>General Sale</span>
-                </button>
-                <button
-                  onClick={() => setSaleType('patient')}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                    saleType === 'patient' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  <User className="h-4 w-4" />
-                  <span>Patient Sale</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Customer/Patient Selection */}
-              {saleType === 'patient' ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Patient</label>
-                  <select
-                    value={selectedPatient?.id || ''}
-                    onChange={(e) => {
-                      const patient = patients.find(p => p.id === e.target.value);
-                      setSelectedPatient(patient || null);
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select a patient</option>
-                    {patients.map(patient => (
-                      <option key={patient.id} value={patient.id}>
-                        {patient.name} - {patient.phone}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Customer Name (Optional)</label>
-                  <input
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Enter customer name"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              )}
-
-              {/* Sale Items */}
-              <div>
-                <h4 className="text-lg font-semibold text-gray-900 mb-4">Sale Items</h4>
-                {saleItems.length > 0 ? (
-                  <div className="space-y-3">
-                    {saleItems.map((item) => (
-                      <div key={item.medicationId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium text-gray-900">{item.medicationName}</p>
-                          <p className="text-sm text-gray-600">
-                            KES {(item.originalPrice || item.price).toFixed(2)} each
-                            {item.originalPrice && (
-                              <span className="ml-2 text-green-600">
-                                (Discounted: KES {item.price.toFixed(2)})
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => updateSaleItemQuantity(item.medicationId, item.quantity - 0.5)}
-                              className="bg-red-100 hover:bg-red-200 text-red-600 w-8 h-8 rounded-full text-sm font-bold transition-colors"
-                            >
-                              -
-                            </button>
-                            <input
-                              type="number"
-                              step="0.5"
-                              min="0.5"
-                              value={item.quantity}
-                              onChange={(e) => updateSaleItemQuantity(item.medicationId, parseFloat(e.target.value) || 0.5)}
-                              className="w-16 text-center border border-gray-300 rounded px-2 py-1"
-                            />
-                            <button
-                              onClick={() => updateSaleItemQuantity(item.medicationId, item.quantity + 0.5)}
-                              className="bg-green-100 hover:bg-green-200 text-green-600 w-8 h-8 rounded-full text-sm font-bold transition-colors"
-                            >
-                              +
-                            </button>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => setShowDiscountModal(item)}
-                              className="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center space-x-1"
-                            >
-                              <Percent className="h-3 w-3" />
-                              <span>Discount</span>
-                            </button>
-                            <div className="text-right">
-                              <p className="font-semibold text-gray-900">KES {item.totalCost.toFixed(2)}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    <div className="border-t pt-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-lg font-semibold text-gray-900">Total:</span>
-                        <span className="text-xl font-bold text-blue-600">KES {totalSaleAmount.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-center py-8">No items added to sale. Add items from the inventory table above.</p>
-                )}
-              </div>
-
-              {/* Payment Method */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
-                <div className="flex space-x-4">
-                  {(['cash', 'mpesa', 'card'] as const).map((method) => (
-                    <button
-                      key={method}
-                      onClick={() => setPaymentMethod(method)}
-                      className={`px-4 py-2 rounded-lg font-medium transition-colors capitalize ${
-                        paymentMethod === method 
-                          ? 'bg-blue-600 text-white' 
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {method}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex space-x-3 pt-4">
-                <button
-                  onClick={completeSale}
-                  disabled={saleItems.length === 0 || (saleType === 'patient' && !selectedPatient)}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Complete Sale - KES {totalSaleAmount.toFixed(2)}
-                </button>
-                <button
-                  onClick={() => {
-                    setSaleItems([]);
-                    setSelectedPatient(null);
-                    setCustomerName('');
-                    setShowSaleModal(false);
-                  }}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 rounded-lg font-medium transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Discount Modal */}
-      {showDiscountModal && !isReviewMode && (
-        <DiscountModal
-          item={{
-            id: showDiscountModal.medicationId,
-            name: showDiscountModal.medicationName,
-            price: showDiscountModal.originalPrice || showDiscountModal.price,
-            quantity: showDiscountModal.quantity,
-            totalCost: (showDiscountModal.originalPrice || showDiscountModal.price) * showDiscountModal.quantity
-          }}
-          onApplyDiscount={applyDiscount}
-          onClose={() => setShowDiscountModal(null)}
+        <CombinedSalesModal
+          onClose={() => setShowSaleModal(false)}
+          onSaleComplete={handleSaleComplete}
         />
       )}
     </div>

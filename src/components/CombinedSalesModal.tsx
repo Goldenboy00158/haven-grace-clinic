@@ -1,0 +1,610 @@
+import React, { useState, useMemo } from 'react';
+import { Search, X, ShoppingCart, Package, Stethoscope, Heart, Users, DollarSign, Percent, CreditCard, Plus, Minus, Filter } from 'lucide-react';
+import { useLocalStorage } from '../hooks/useLocalStorage';
+import { Patient, Transaction, Medication } from '../types';
+import { medications } from '../data/medications';
+import DiscountModal from './DiscountModal';
+import PaymentMethodModal from './PaymentMethodModal';
+
+interface ClinicalService {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+  description: string;
+  duration?: number;
+  requirements?: string[];
+  severity?: 'mild' | 'moderate' | 'severe';
+}
+
+interface FamilyPlanningService {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+  description: string;
+  duration?: number;
+  effectiveness?: string;
+  protection?: string;
+  requirements?: string[];
+}
+
+interface SaleItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  totalCost: number;
+  originalPrice?: number;
+  discountType?: 'percentage' | 'fixed';
+  discountValue?: number;
+  category: string;
+  description: string;
+  type: 'medication' | 'clinical_service' | 'family_planning_service';
+  stock?: number;
+}
+
+interface CombinedSalesModalProps {
+  patient?: Patient;
+  onClose: () => void;
+  onSaleComplete: (items: SaleItem[], totalAmount: number, paymentMethod: string, customerInfo: any) => void;
+}
+
+export default function CombinedSalesModal({ patient, onClose, onSaleComplete }: CombinedSalesModalProps) {
+  const [clinicalServices] = useLocalStorage<ClinicalService[]>('clinic-clinical-services', []);
+  const [fpServices] = useLocalStorage<FamilyPlanningService[]>('clinic-fp-services', []);
+  const [patients] = useLocalStorage<Patient[]>('clinic-patients', []);
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [activeTab, setActiveTab] = useState<'medications' | 'clinical' | 'family_planning'>('medications');
+  const [selectedItems, setSelectedItems] = useState<SaleItem[]>([]);
+  const [saleType, setSaleType] = useState<'general' | 'patient'>(patient ? 'patient' : 'general');
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(patient || null);
+  const [customerName, setCustomerName] = useState('');
+  const [showDiscountModal, setShowDiscountModal] = useState<SaleItem | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  // Get available medications with stock > 0
+  const availableMedications = medications.filter(med => med.stock > 0);
+
+  // Combine all items based on active tab
+  const allItems = useMemo(() => {
+    let items: any[] = [];
+    
+    if (activeTab === 'medications') {
+      items = availableMedications.map(med => ({
+        ...med,
+        type: 'medication',
+        category: med.category || 'medications'
+      }));
+    } else if (activeTab === 'clinical') {
+      items = clinicalServices.map(service => ({
+        ...service,
+        type: 'clinical_service'
+      }));
+    } else if (activeTab === 'family_planning') {
+      // Only show family planning services for female patients or general sales
+      if (!selectedPatient || selectedPatient.gender === 'female') {
+        items = fpServices.map(fp => ({
+          ...fp,
+          type: 'family_planning_service'
+        }));
+      }
+    }
+    
+    return items;
+  }, [availableMedications, clinicalServices, fpServices, selectedPatient, activeTab]);
+
+  // Get unique categories for current tab
+  const categories = useMemo(() => {
+    const cats = new Set(allItems.map(item => item.category));
+    return Array.from(cats).sort();
+  }, [allItems]);
+
+  // Filter items
+  const filteredItems = useMemo(() => {
+    return allItems.filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           item.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = !selectedCategory || item.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [allItems, searchTerm, selectedCategory]);
+
+  const getItemIcon = (item: any) => {
+    if (item.type === 'medication') return Package;
+    if (item.type === 'family_planning_service') return Heart;
+    return Stethoscope;
+  };
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'contraceptive_implant': return 'bg-purple-100 text-purple-800';
+      case 'iud': return 'bg-pink-100 text-pink-800';
+      case 'injection': return 'bg-blue-100 text-blue-800';
+      case 'emergency': return 'bg-red-100 text-red-800';
+      case 'counseling': return 'bg-green-100 text-green-800';
+      case 'diagnostics': return 'bg-blue-100 text-blue-800';
+      case 'procedures': return 'bg-purple-100 text-purple-800';
+      case 'consultations': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const addItemToSelection = (item: any) => {
+    const existingItem = selectedItems.find(s => s.id === item.id);
+    if (!existingItem) {
+      setSelectedItems(prev => [...prev, {
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.type === 'medication' ? 0.5 : 1,
+        totalCost: item.type === 'medication' ? item.price * 0.5 : item.price,
+        category: item.category,
+        description: item.description,
+        type: item.type,
+        stock: item.stock
+      }]);
+    }
+  };
+
+  const removeItemFromSelection = (itemId: string) => {
+    setSelectedItems(prev => prev.filter(s => s.id !== itemId));
+  };
+
+  const updateItemQuantity = (itemId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeItemFromSelection(itemId);
+    } else {
+      setSelectedItems(prev => prev.map(item => 
+        item.id === itemId ? { 
+          ...item, 
+          quantity, 
+          totalCost: (item.originalPrice || item.price) * quantity 
+        } : item
+      ));
+    }
+  };
+
+  const applyDiscount = (itemId: string, discountType: 'percentage' | 'fixed', discountValue: number) => {
+    setSelectedItems(prev => prev.map(item => {
+      if (item.id === itemId) {
+        const originalPrice = item.originalPrice || item.price;
+        let discountedPrice = originalPrice;
+        
+        if (discountType === 'percentage') {
+          discountedPrice = originalPrice - (originalPrice * discountValue / 100);
+        } else {
+          discountedPrice = Math.max(0, originalPrice - discountValue);
+        }
+        
+        return {
+          ...item,
+          originalPrice: originalPrice,
+          price: discountedPrice,
+          totalCost: discountedPrice * item.quantity,
+          discountType,
+          discountValue
+        };
+      }
+      return item;
+    }));
+  };
+
+  const totalAmount = selectedItems.reduce((sum, item) => sum + item.totalCost, 0);
+  const totalSavings = selectedItems.reduce((sum, item) => {
+    if (item.originalPrice) {
+      return sum + ((item.originalPrice - item.price) * item.quantity);
+    }
+    return sum;
+  }, 0);
+
+  const handlePaymentComplete = (paymentMethod: 'cash' | 'mpesa' | 'card', transactionId?: string) => {
+    const customerInfo = {
+      type: saleType,
+      patientId: selectedPatient?.id,
+      patientName: selectedPatient?.name || customerName || 'General Customer'
+    };
+
+    onSaleComplete(selectedItems, totalAmount, paymentMethod, customerInfo);
+    setShowPaymentModal(false);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl max-w-7xl w-full max-h-[95vh] overflow-y-auto">
+        {/* Header */}
+        <div className="p-6 border-b bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-semibold">
+                Complete Sales - Services & Medications
+              </h3>
+              <p className="text-blue-100 text-sm mt-1">
+                {patient ? `For patient: ${patient.name}` : 'General sale or select patient'}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="bg-white/20 hover:bg-white/30 text-white p-2 rounded-lg transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6">
+          {/* Customer Selection */}
+          {!patient && (
+            <div className="mb-6 bg-gray-50 rounded-lg p-4">
+              <div className="flex space-x-4 mb-4">
+                <button
+                  onClick={() => setSaleType('general')}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    saleType === 'general' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  <Users className="h-4 w-4" />
+                  <span>General Sale</span>
+                </button>
+                <button
+                  onClick={() => setSaleType('patient')}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    saleType === 'patient' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  <Users className="h-4 w-4" />
+                  <span>Patient Sale</span>
+                </button>
+              </div>
+
+              {saleType === 'patient' ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Patient</label>
+                  <select
+                    value={selectedPatient?.id || ''}
+                    onChange={(e) => {
+                      const patient = patients.find(p => p.id === e.target.value);
+                      setSelectedPatient(patient || null);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select a patient</option>
+                    {patients.map(patient => (
+                      <option key={patient.id} value={patient.id}>
+                        {patient.name} - {patient.phone} ({patient.gender}, {patient.age}y)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Customer Name (Optional)</label>
+                  <input
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Enter customer name"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Item Type Tabs */}
+          <div className="mb-6">
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setActiveTab('medications')}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors flex-1 justify-center ${
+                  activeTab === 'medications'
+                    ? 'bg-orange-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-orange-600'
+                }`}
+              >
+                <Package className="h-4 w-4" />
+                <span>Medications</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('clinical')}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors flex-1 justify-center ${
+                  activeTab === 'clinical'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-blue-600'
+                }`}
+              >
+                <Stethoscope className="h-4 w-4" />
+                <span>Clinical Services</span>
+              </button>
+              {(!selectedPatient || selectedPatient.gender === 'female') && (
+                <button
+                  onClick={() => setActiveTab('family_planning')}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors flex-1 justify-center ${
+                    activeTab === 'family_planning'
+                      ? 'bg-pink-600 text-white shadow-md'
+                      : 'text-gray-600 hover:text-pink-600'
+                  }`}
+                >
+                  <Heart className="h-4 w-4" />
+                  <span>Family Planning</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Search and Filters */}
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder={`Search ${activeTab}...`}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
+              />
+            </div>
+            
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Categories</option>
+              {categories.map(category => (
+                <option key={category} value={category}>
+                  {category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </option>
+              ))}
+            </select>
+
+            <div className="text-sm text-gray-600 flex items-center">
+              <Filter className="h-4 w-4 mr-2" />
+              Found {filteredItems.length} items
+            </div>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Available Items */}
+            <div className="lg:col-span-2">
+              <h4 className="font-medium text-gray-900 mb-4">
+                Available {activeTab === 'family_planning' ? 'Family Planning Services' : 
+                          activeTab === 'medications' ? 'Medications' : 'Clinical Services'}
+              </h4>
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {filteredItems.map((item) => {
+                  const Icon = getItemIcon(item);
+                  const isSelected = selectedItems.some(s => s.id === item.id);
+                  
+                  return (
+                    <div key={item.id} className={`p-4 border rounded-lg hover:bg-gray-50 transition-colors ${
+                      isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                    }`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <Icon className="h-5 w-5 text-blue-600" />
+                            <h5 className="font-medium text-gray-900">{item.name}</h5>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(item.category)}`}>
+                              {item.category.replace('_', ' ')}
+                            </span>
+                            {item.type === 'medication' && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                Stock: {item.stock}
+                              </span>
+                            )}
+                          </div>
+                          
+                          <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+                          
+                          <div className="flex items-center space-x-4 text-sm text-gray-500">
+                            <div className="flex items-center">
+                              <DollarSign className="h-4 w-4 mr-1" />
+                              <span className="font-medium text-green-600">KES {item.price.toLocaleString()}</span>
+                            </div>
+                            {item.duration && (
+                              <div className="flex items-center">
+                                <span>{item.duration} min</span>
+                              </div>
+                            )}
+                            {item.effectiveness && (
+                              <div className="text-green-600 font-medium text-xs">
+                                {item.effectiveness}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <button
+                          onClick={() => addItemToSelection(item)}
+                          disabled={isSelected || (item.type === 'medication' && item.stock === 0)}
+                          className={`ml-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            isSelected 
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                              : item.type === 'medication' && item.stock === 0
+                              ? 'bg-red-300 text-red-500 cursor-not-allowed'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          }`}
+                        >
+                          {isSelected ? 'Added' : item.type === 'medication' && item.stock === 0 ? 'Out of Stock' : 'Add'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {filteredItems.length === 0 && (
+                  <div className="text-center py-8">
+                    <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">
+                      {selectedPatient?.gender !== 'female' && activeTab === 'family_planning' 
+                        ? 'Family planning services are only available for female patients.'
+                        : `No ${activeTab} found matching your criteria.`
+                      }
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Selected Items Cart */}
+            <div className="lg:col-span-1">
+              <h4 className="font-medium text-gray-900 mb-4 flex items-center">
+                <ShoppingCart className="h-5 w-5 mr-2" />
+                Cart ({selectedItems.length})
+              </h4>
+              <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
+                {selectedItems.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedItems.map((item) => (
+                      <div key={item.id} className="bg-white p-3 rounded-lg border">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-sm">{item.name}</span>
+                          <button
+                            onClick={() => removeItemFromSelection(item.id)}
+                            className="text-red-600 hover:text-red-800 text-sm"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => updateItemQuantity(item.id, item.quantity - (item.type === 'medication' ? 0.5 : 1))}
+                                className="bg-gray-200 hover:bg-gray-300 text-gray-700 w-6 h-6 rounded text-xs flex items-center justify-center"
+                              >
+                                <Minus className="h-3 w-3" />
+                              </button>
+                              <input
+                                type="number"
+                                step={item.type === 'medication' ? "0.5" : "1"}
+                                min={item.type === 'medication' ? "0.5" : "1"}
+                                value={item.quantity}
+                                onChange={(e) => updateItemQuantity(item.id, parseFloat(e.target.value) || (item.type === 'medication' ? 0.5 : 1))}
+                                className="w-16 text-center border border-gray-300 rounded px-1 py-0.5 text-xs"
+                              />
+                              <button
+                                onClick={() => updateItemQuantity(item.id, item.quantity + (item.type === 'medication' ? 0.5 : 1))}
+                                className="bg-gray-200 hover:bg-gray-300 text-gray-700 w-6 h-6 rounded text-xs flex items-center justify-center"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </button>
+                            </div>
+                            <div className="text-right">
+                              {item.originalPrice && (
+                                <div className="text-xs text-gray-500 line-through">
+                                  KES {(item.originalPrice * item.quantity).toLocaleString()}
+                                </div>
+                              )}
+                              <span className="font-medium text-green-600">
+                                KES {item.totalCost.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <button
+                            onClick={() => setShowDiscountModal(item)}
+                            className="w-full bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center justify-center space-x-1"
+                          >
+                            <Percent className="h-3 w-3" />
+                            <span>Apply Discount</span>
+                          </button>
+                          
+                          {item.discountValue && (
+                            <div className="text-xs text-green-600 bg-green-50 p-1 rounded text-center">
+                              {item.discountType === 'percentage' ? `${item.discountValue}% off` : `KES ${item.discountValue} off`}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <div className="border-t pt-3 mt-3 space-y-2">
+                      {totalSavings > 0 && (
+                        <div className="flex justify-between items-center text-sm text-green-600">
+                          <span>Total Savings:</span>
+                          <span>KES {totalSavings.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-gray-900">Total:</span>
+                        <span className="text-xl font-bold text-green-600">
+                          KES {totalAmount.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <ShoppingCart className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-500 text-sm">No items in cart</p>
+                    <p className="text-gray-400 text-xs">Add items from the left panel</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex space-x-3 pt-6 border-t mt-6">
+            <button
+              onClick={() => setShowPaymentModal(true)}
+              disabled={selectedItems.length === 0 || (saleType === 'patient' && !selectedPatient)}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            >
+              <CreditCard className="h-4 w-4" />
+              <span>Proceed to Payment - KES {totalAmount.toLocaleString()}</span>
+            </button>
+            <button
+              onClick={() => setSelectedItems([])}
+              disabled={selectedItems.length === 0}
+              className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50"
+            >
+              Clear Cart
+            </button>
+            <button
+              onClick={onClose}
+              className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+
+        {/* Discount Modal */}
+        {showDiscountModal && (
+          <DiscountModal
+            item={{
+              id: showDiscountModal.id,
+              name: showDiscountModal.name,
+              price: showDiscountModal.originalPrice || showDiscountModal.price,
+              quantity: showDiscountModal.quantity,
+              totalCost: (showDiscountModal.originalPrice || showDiscountModal.price) * showDiscountModal.quantity,
+              description: showDiscountModal.description
+            }}
+            onApplyDiscount={applyDiscount}
+            onClose={() => setShowDiscountModal(null)}
+          />
+        )}
+
+        {/* Payment Modal */}
+        {showPaymentModal && (
+          <PaymentMethodModal
+            totalAmount={totalAmount}
+            onPaymentComplete={handlePaymentComplete}
+            onClose={() => setShowPaymentModal(false)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
