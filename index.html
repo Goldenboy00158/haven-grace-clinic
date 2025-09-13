@@ -9,7 +9,11 @@
     <meta name="keywords" content="medical clinic, healthcare, doctors, cardiology, neurology, pediatrics, orthopedics, internal medicine">
 
     <!-- ✅ Mpesa script should load from correct path -->
-    <script src="/mpesa-standalone.js"></script>
+    <!-- Option 1: Modern way (best for Vite) -->
+<script type="module" src="/mpesa-standalone.js"></script>
+
+<!-- Option 2: If it's just a plain JS utility -->
+<script src="/mpesa-standalone.js" defer></script>
   </head>
 
   <body>
