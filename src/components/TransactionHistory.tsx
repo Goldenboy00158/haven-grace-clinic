@@ -3,7 +3,7 @@ import { Search, Filter, Download, DollarSign, Calendar, User, Package, CheckCir
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Transaction, Patient } from '../types';
 
-export default function TransactionHistory() {
+export default function TransactionHistory({ isReviewMode = false }: TransactionHistoryProps) {
   const [transactions, setTransactions] = useLocalStorage<Transaction[]>('clinic-transactions', []);
   const [patients] = useLocalStorage<Patient[]>('clinic-patients', []);
   const [searchTerm, setSearchTerm] = useState('');
@@ -268,7 +268,7 @@ export default function TransactionHistory() {
                     )}
                   </td>
                   <td className="py-4 px-6">
-                    {transaction.status === 'completed' && !transaction.paymentConfirmed && (
+                    {!isReviewMode && transaction.status === 'completed' && !transaction.paymentConfirmed && (
                       <button
                         onClick={() => confirmPayment(transaction.id)}
                         className="bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center space-x-1"
@@ -279,6 +279,9 @@ export default function TransactionHistory() {
                     )}
                     {transaction.status === 'confirmed' && (
                       <span className="text-green-600 text-sm font-medium">✓ Confirmed</span>
+                    )}
+                    {isReviewMode && (
+                      <span className="text-gray-500 text-sm">View Only</span>
                     )}
                   </td>
                 </tr>

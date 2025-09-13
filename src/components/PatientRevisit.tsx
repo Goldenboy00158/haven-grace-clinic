@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Calendar, User, FileText, Plus, Activity, Heart, Thermometer, Weight, Ruler, Droplets, Wind, X, Save, Clock, Stethoscope } from 'lucide-react';
+import { Calendar, User, FileText, Plus, Activity, Heart, Thermometer, Weight, Ruler, Droplets, Wind, X, Save, Clock, Stethoscope, CheckCircle } from 'lucide-react';
 import { Patient, MedicalRecord, DispensedMedication, VitalSigns } from '../types';
 import { getTabletCapsuleMedications } from '../data/medications';
 import { medicalShortForms, calculateTotalQuantity } from '../data/medicalShortForms';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import AutoSaveIndicator from './AutoSaveIndicator';
 
 interface ClinicalService {
   id: string;
@@ -24,6 +25,8 @@ interface PatientRevisitProps {
 export default function PatientRevisit({ patient, onClose, onAddRecord }: PatientRevisitProps) {
   const [activeTab, setActiveTab] = useState('history');
   const [showAddRecord, setShowAddRecord] = useState(false);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null);
   const [services] = useLocalStorage<ClinicalService[]>('clinic-clinical-services', []);
 
   // Get only tablet/capsule medications for prescription
@@ -67,6 +70,51 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
   const [medicationInstructions, setMedicationInstructions] = useState('');
 
   const lastVisit = patient.medicalHistory[0];
+
+  // Auto-save functionality
+  React.useEffect(() => {
+    if (!autoSaveEnabled || !showAddRecord) return;
+
+    const autoSaveData = {
+      patientId: patient.id,
+      patientName: patient.name,
+      timestamp: new Date().toISOString(),
+      recordData: newRecord,
+      gynecologicUpdate: patient.gender === 'female' ? gynecologicUpdate : null,
+      visitType: 'revisit'
+    };
+
+    // Auto-save every 30 seconds if there's meaningful data
+    const hasData = newRecord.chiefComplaint || newRecord.diagnosis || newRecord.treatment || 
+                   Object.keys(newRecord.vitalSigns).length > 0 || newRecord.medications.length > 0;
+
+    if (hasData) {
+      const autoSaveTimer = setTimeout(() => {
+        localStorage.setItem(`auto-save-visit-${patient.id}`, JSON.stringify(autoSaveData));
+        setLastAutoSave(new Date());
+      }, 30000);
+
+      return () => clearTimeout(autoSaveTimer);
+    }
+  }, [newRecord, gynecologicUpdate, patient.id, patient.name, autoSaveEnabled, showAddRecord]);
+
+  // Load auto-saved data on component mount
+  React.useEffect(() => {
+    const autoSavedData = localStorage.getItem(`auto-save-visit-${patient.id}`);
+    if (autoSavedData && showAddRecord) {
+      try {
+        const savedData = JSON.parse(autoSavedData);
+        if (savedData.recordData && confirm('Found auto-saved visit data. Would you like to restore it?')) {
+          setNewRecord(savedData.recordData);
+          if (savedData.gynecologicUpdate && patient.gender === 'female') {
+            setGynecologicUpdate(savedData.gynecologicUpdate);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading auto-saved data:', error);
+      }
+    }
+  }, [showAddRecord, patient.id, patient.gender]);
 
   const addMedicationToRecord = () => {
     if (!selectedMedication || !medicationFrequency) return;
@@ -129,6 +177,11 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
     };
 
     onAddRecord(record);
+    
+    // Clear auto-saved data after successful save
+    localStorage.removeItem(`auto-save-visit-${patient.id}`);
+    setLastAutoSave(null);
+    
     setShowAddRecord(false);
     setNewRecord({
       chiefComplaint: '',
@@ -241,9 +294,18 @@ export default function PatientRevisit({ patient, onClose, onAddRecord }: Patien
         {showAddRecord && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-60">
             <div className="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">
-                Add New Medical Record - SMART Format
-              </h3>
+              {/* Auto-save indicator */}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Add New Medical Record - SMART Format
+                </h3>
+                <AutoSaveIndicator
+                  isEnabled={autoSaveEnabled}
+                  lastSaveTime={lastAutoSave}
+                  hasUnsavedChanges={false}
+                  onToggle={setAutoSaveEnabled}
+                />
+              </div>
 
               <div className="space-y-6">
                 {/* Updated Gynecologic History for Female Patients */}

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { User, Phone, Calendar, FileText, Plus, ShoppingCart, Activity, Thermometer, Heart, Weight, Ruler, Droplets, Wind, X } from 'lucide-react';
+import { User, Phone, Calendar, FileText, Plus, ShoppingCart, Activity, Thermometer, Heart, Weight, Ruler, Droplets, Wind, X, CheckCircle } from 'lucide-react';
 import { Patient, MedicalRecord, DispensedMedication, VitalSigns, Transaction } from '../types';
 import { getTabletCapsuleMedications } from '../data/medications';
 import { medicalShortForms, calculateTotalQuantity } from '../data/medicalShortForms';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import VitalSignsDisplay from './VitalSignsDisplay';
+import AutoSaveIndicator from './AutoSaveIndicator';
 
 interface EnhancedPatientViewProps {
   patient: Patient;
@@ -20,6 +21,8 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
   const [showSellModal, setShowSellModal] = useState(false);
   const [selectedItems, setSelectedItems] = useState<DispensedMedication[]>([]);
   const [transactions, setTransactions] = useLocalStorage<Transaction[]>('clinic-transactions', []);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null);
 
   // Get only tablet/capsule medications for prescription
   const availableMedications = getTabletCapsuleMedications();
@@ -44,6 +47,47 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
   const [medicationInstructions, setMedicationInstructions] = useState('');
 
   const lastVisit = patient.medicalHistory[0];
+
+  // Auto-save functionality
+  React.useEffect(() => {
+    if (!autoSaveEnabled || !showAddRecord) return;
+
+    const autoSaveData = {
+      patientId: patient.id,
+      patientName: patient.name,
+      timestamp: new Date().toISOString(),
+      recordData: newRecord,
+      visitType: 'regular'
+    };
+
+    // Auto-save every 30 seconds if there's meaningful data
+    const hasData = newRecord.symptoms || newRecord.diagnosis || newRecord.treatment || 
+                   Object.keys(newRecord.vitalSigns).length > 0 || newRecord.medications.length > 0;
+
+    if (hasData) {
+      const autoSaveTimer = setTimeout(() => {
+        localStorage.setItem(`auto-save-visit-${patient.id}`, JSON.stringify(autoSaveData));
+        setLastAutoSave(new Date());
+      }, 30000);
+
+      return () => clearTimeout(autoSaveTimer);
+    }
+  }, [newRecord, patient.id, patient.name, autoSaveEnabled, showAddRecord]);
+
+  // Load auto-saved data on component mount
+  React.useEffect(() => {
+    const autoSavedData = localStorage.getItem(`auto-save-visit-${patient.id}`);
+    if (autoSavedData && showAddRecord) {
+      try {
+        const savedData = JSON.parse(autoSavedData);
+        if (savedData.recordData && confirm('Found auto-saved visit data. Would you like to restore it?')) {
+          setNewRecord(savedData.recordData);
+        }
+      } catch (error) {
+        console.error('Error loading auto-saved data:', error);
+      }
+    }
+  }, [showAddRecord, patient.id]);
 
   const addMedicationToRecord = () => {
     if (!selectedMedication || !medicationFrequency) return;
@@ -95,6 +139,11 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
     };
 
     onAddRecord(record);
+    
+    // Clear auto-saved data after successful save
+    localStorage.removeItem(`auto-save-visit-${patient.id}`);
+    setLastAutoSave(null);
+    
     setShowAddRecord(false);
     setNewRecord({
       symptoms: '',
@@ -448,9 +497,18 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
         {showAddRecord && !isReviewMode && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-60">
             <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">
-                Add Medical Record for {patient.name}
-              </h3>
+              {/* Auto-save indicator */}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Add Medical Record for {patient.name}
+                </h3>
+                <AutoSaveIndicator
+                  isEnabled={autoSaveEnabled}
+                  lastSaveTime={lastAutoSave}
+                  hasUnsavedChanges={false}
+                  onToggle={setAutoSaveEnabled}
+                />
+              </div>
 
               {/* Show previous visit info */}
               {lastVisit && (

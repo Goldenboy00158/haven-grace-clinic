@@ -114,7 +114,7 @@ export default function TCACalculator({ onClose, onSchedule }: TCACalculatorProp
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Client Visit Date (Starting Point)
+              Client Visit Date (When Service Was Provided)
             </label>
             <input
               type="date"
@@ -123,7 +123,7 @@ export default function TCACalculator({ onClose, onSchedule }: TCACalculatorProp
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             />
             <p className="text-xs text-gray-500 mt-1">
-              This is the date the client visited/received the service
+              This is the date the client received the contraceptive service (starting point for calculations)
             </p>
           </div>
 
@@ -218,8 +218,9 @@ export default function TCACalculator({ onClose, onSchedule }: TCACalculatorProp
         </div>
 
         <div className="mt-4 text-xs text-gray-500 bg-gray-50 p-2 rounded">
-          <strong>How it works:</strong> Enter the date the client visited/received the service. 
-          The system calculates when the method expires and sets the TCA 3 days before for convenience.
+          <strong>Calculation Logic:</strong> Starting from the client visit date (when service was provided), 
+          the system calculates when the contraceptive method expires, then sets the TCA appointment 3 days 
+          before the due date for scheduling convenience and to ensure continuity of protection.
         </div>
       </div>
     </div>

@@ -79,10 +79,6 @@ export default function EnhancedShareLinkGenerator({ onClose }: EnhancedShareLin
     }
   };
 
-  const openInNewTab = () => {
-    window.open(shareUrl, '_blank');
-  };
-
   const shareTypes = [
     {
       id: 'real-time' as const,
