@@ -423,6 +423,16 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
                         <span>Sell Items</span>
                       </button>
                       <button
+                        onClick={() => {
+                          const event = new CustomEvent('open-document-generator', { detail: patient });
+                          window.dispatchEvent(event);
+                        }}
+                        className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                      >
+                        <FileText className="h-4 w-4" />
+                        <span>Documents</span>
+                      </button>
+                      <button
                         onClick={() => handleEditPatient(patient)}
                         className="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
                       >

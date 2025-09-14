@@ -300,6 +300,16 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
               <div className="mt-3">
                 <span className="font-medium text-gray-700">Pregnancy History:</span>
                 <p className="text-gray-600 mt-1">{patient.gynecologicHistory.pregnancyHistory}</p>
+                <button
+                  onClick={() => {
+                    const event = new CustomEvent('open-document-generator', { detail: patient });
+                    window.dispatchEvent(event);
+                  }}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>Documents</span>
+                </button>
               </div>
             )}
           </div>

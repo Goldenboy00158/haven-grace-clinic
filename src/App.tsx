@@ -14,12 +14,15 @@ import AnalyticsDashboard from './components/AnalyticsDashboard';
 import ReviewModeToggle from './components/ReviewModeToggle';
 import EnhancedShareLinkGenerator from './components/EnhancedShareLinkGenerator';
 import QuickPrintButton from './components/QuickPrintButton';
+import MedicalDocumentGenerator from './components/MedicalDocumentGenerator';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isReviewMode, setIsReviewMode] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showDocumentGenerator, setShowDocumentGenerator] = useState(false);
+  const [documentPatient, setDocumentPatient] = useState<any>(null);
 
   // Check if this is a shared view
   const urlPath = window.location.pathname;
@@ -44,6 +47,18 @@ function App() {
     };
   }, []);
 
+  // Listen for document generator events
+  useEffect(() => {
+    const handleOpenDocumentGenerator = (event: CustomEvent) => {
+      setDocumentPatient(event.detail || null);
+      setShowDocumentGenerator(true);
+    };
+
+    window.addEventListener('open-document-generator', handleOpenDocumentGenerator as EventListener);
+    return () => {
+      window.removeEventListener('open-document-generator', handleOpenDocumentGenerator as EventListener);
+    };
+  }, []);
   const tabs = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
     { id: 'inventory', name: 'Inventory', icon: Package },
@@ -228,6 +243,17 @@ function App() {
       {/* Enhanced Share Modal */}
       {showShareModal && (
         <EnhancedShareLinkGenerator onClose={() => setShowShareModal(false)} />
+      )}
+
+      {/* Medical Document Generator */}
+      {showDocumentGenerator && (
+        <MedicalDocumentGenerator 
+          onClose={() => {
+            setShowDocumentGenerator(false);
+            setDocumentPatient(null);
+          }}
+          preselectedPatient={documentPatient}
+        />
       )}
     </div>
   );
