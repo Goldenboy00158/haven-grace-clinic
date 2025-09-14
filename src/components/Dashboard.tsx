@@ -329,6 +329,16 @@ export default function Dashboard({ onNavigate, isReviewMode, onShowShare }: Das
             <TrendingUp className="h-8 w-8 text-indigo-600 mx-auto mb-2" />
             <p className="text-sm font-medium text-indigo-600">View Reports</p>
           </button>
+          <button 
+            onClick={() => {
+              const event = new CustomEvent('open-document-generator');
+              window.dispatchEvent(event);
+            }}
+            className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg text-center transition-colors"
+          >
+            <FileText className="h-8 w-8 text-purple-600 mx-auto mb-2" />
+            <p className="text-sm font-medium text-purple-600">Medical Documents</p>
+          </button>
         </div>
       </div>
     </div>
