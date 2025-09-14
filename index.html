@@ -8,19 +8,15 @@
     <meta name="description" content="Haven Grace Medical Clinic provides comprehensive healthcare services with experienced physicians, modern facilities, and compassionate care for patients of all ages.">
     <meta name="keywords" content="medical clinic, healthcare, doctors, cardiology, neurology, pediatrics, orthopedics, internal medicine">
 
-    <!-- ✅ Mpesa script should load from correct path -->
-    <!-- Option 1: Modern way (best for Vite) -->
-<script type="module" src="/mpesa-standalone.js"></script>
-
-<!-- Option 2: If it's just a plain JS utility -->
-<script src="/mpesa-standalone.js" defer></script>
+    <!-- Mpesa script -->
+    <script src="/mpesa-standalone.js" defer></script>
   </head>
 
   <body>
-    <!-- ✅ This div is where the payment UI will render -->
+    <!-- This div is where the payment UI will render -->
     <div id="payment-form"></div>
 
-    <!-- ✅ Mpesa Initialization -->
+    <!-- Mpesa Initialization -->
     <script>
       document.addEventListener('DOMContentLoaded', function () {
         if (typeof window.MpesaStandalone === "function") {
@@ -33,12 +29,12 @@
           });
           mpesa.render('payment-form');
         } else {
-          console.error("❌ MpesaStandalone is not defined or not loaded correctly.");
+          console.error("MpesaStandalone is not defined or not loaded correctly.");
         }
       });
     </script>
 
-    <!-- ✅ Load your main Vite app -->
+    <!-- Load your main Vite app -->
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
