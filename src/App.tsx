@@ -15,6 +15,7 @@ import ReviewModeToggle from './components/ReviewModeToggle';
 import EnhancedShareLinkGenerator from './components/EnhancedShareLinkGenerator';
 import QuickPrintButton from './components/QuickPrintButton';
 import MedicalDocumentGenerator from './components/MedicalDocumentGenerator';
+import QuickSaleButton from './components/QuickSaleButton';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -239,6 +240,9 @@ function App() {
         variant="fab" 
         context={getContextForPrint()}
       />
+
+      {/* Floating Quick Sale Button */}
+      <QuickSaleButton variant="fab" />
 
       {/* Enhanced Share Modal */}
       {showShareModal && (

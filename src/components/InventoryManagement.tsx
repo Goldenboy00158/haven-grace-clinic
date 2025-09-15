@@ -6,6 +6,7 @@ import { Medication, Patient, Transaction, SaleItem } from '../types';
 import EditMedicationModal from './EditMedicationModal';
 import AddMedicationModal from './AddMedicationModal';
 import CombinedSalesModal from './CombinedSalesModal';
+import QuickSaleButton from './QuickSaleButton';
 
 interface InventoryManagementProps {
   isReviewMode?: boolean;
@@ -195,6 +196,7 @@ export default function InventoryManagement({ isReviewMode = false }: InventoryM
                 <ShoppingCart className="h-4 w-4" />
                 <span>Combined Sale</span>
               </button>
+              <QuickSaleButton className="bg-purple-600 hover:bg-purple-700" />
             </>
           )}
           <button

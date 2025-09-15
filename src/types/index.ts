@@ -114,6 +114,11 @@ export interface SaleItem {
   originalPrice?: number;
   discountType?: 'percentage' | 'fixed';
   discountValue?: number;
+  id?: string;
+  name?: string;
+  category?: string;
+  description?: string;
+  type?: 'medication' | 'service';
 }
 
 export interface ServiceItem {

@@ -5,6 +5,7 @@ import { Patient, Transaction, Medication } from '../types';
 import { medications } from '../data/medications';
 import DiscountModal from './DiscountModal';
 import PaymentMethodModal from './PaymentMethodModal';
+import SalesPreviewModal from './SalesPreviewModal';
 
 interface ClinicalService {
   id: string;
@@ -225,6 +226,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
   const [showDiscountModal, setShowDiscountModal] = useState<ServiceItem | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'clinical' | 'family_planning' | 'medications'>('clinical');
 
   // Get available medications with stock > 0
@@ -408,6 +410,20 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
     onClose();
   };
 
+  const handleShowPreview = () => {
+    if (selectedItems.length === 0) {
+      alert('Please add items to cart first');
+      return;
+    }
+    setShowPreviewModal(true);
+  };
+
+  const getCustomerInfo = () => ({
+    type: 'patient' as const,
+    name: patient.name,
+    phone: patient.phone,
+    patientId: patient.id
+  });
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-xl max-w-6xl w-full max-h-[95vh] overflow-y-auto">
@@ -731,6 +747,14 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
           {/* Action Buttons */}
           <div className="flex space-x-3 pt-6 border-t mt-6">
             <button
+              onClick={handleShowPreview}
+              disabled={selectedItems.length === 0}
+              className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              <Eye className="h-4 w-4" />
+              <span>Preview Sale</span>
+            </button>
+            <button
               onClick={() => setShowPaymentModal(true)}
               disabled={selectedItems.length === 0}
               className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
@@ -762,6 +786,24 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
             totalAmount={totalAmount}
             onPaymentComplete={handlePaymentComplete}
             onClose={() => setShowPaymentModal(false)}
+          />
+        )}
+
+        {/* Sales Preview Modal */}
+        {showPreviewModal && (
+          <SalesPreviewModal
+            items={selectedItems}
+            customer={getCustomerInfo()}
+            totalAmount={totalAmount}
+            totalSavings={totalSavings}
+            onClose={() => setShowPreviewModal(false)}
+            onPrint={() => {
+              // Print functionality handled in the preview modal
+            }}
+            onProceedToPayment={() => {
+              setShowPreviewModal(false);
+              setShowPaymentModal(true);
+            }}
           />
         )}
       </div>
