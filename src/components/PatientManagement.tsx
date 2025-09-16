@@ -5,6 +5,7 @@ import { Patient, MedicalRecord, Transaction, Medication } from '../types';
 import { medications } from '../data/medications';
 import EnhancedPatientView from './EnhancedPatientView';
 import CombinedSalesModal from './CombinedSalesModal';
+import PatientRecordPrintModal from './PatientRecordPrintModal';
 
 interface PatientManagementProps {
   isReviewMode?: boolean;
@@ -21,6 +22,7 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPatientView, setShowPatientView] = useState<Patient | null>(null);
   const [showSalesModal, setShowSalesModal] = useState<Patient | null>(null);
+  const [showPrintRecordsModal, setShowPrintRecordsModal] = useState<Patient | null>(null);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   
   const [newPatient, setNewPatient] = useState({
@@ -423,6 +425,13 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
                         <span>Sell Items</span>
                       </button>
                       <button
+                        onClick={() => setShowPrintRecordsModal(patient)}
+                        className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                      >
+                        <Printer className="h-4 w-4" />
+                        <span>Print Records</span>
+                      </button>
+                      <button
                         onClick={() => {
                           const event = new CustomEvent('open-document-generator', { detail: patient });
                           window.dispatchEvent(event);
@@ -663,6 +672,14 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
           patient={showSalesModal}
           onClose={() => setShowSalesModal(null)}
           onSaleComplete={handleSaleComplete}
+        />
+      )}
+
+      {/* Patient Record Print Modal */}
+      {showPrintRecordsModal && (
+        <PatientRecordPrintModal
+          patient={showPrintRecordsModal}
+          onClose={() => setShowPrintRecordsModal(null)}
         />
       )}
     </div>

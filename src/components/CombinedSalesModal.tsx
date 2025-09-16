@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, X, ShoppingCart, Package, Stethoscope, Heart, Users, DollarSign, Percent, CreditCard, Plus, Minus, Filter } from 'lucide-react';
+import { Search, X, ShoppingCart, Package, Stethoscope, Heart, Users, DollarSign, Percent, CreditCard, Plus, Minus, Filter, Eye } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Patient, Transaction, Medication } from '../types';
 import { medications } from '../data/medications';
@@ -49,11 +49,176 @@ interface CombinedSalesModalProps {
   patient?: Patient;
   onClose: () => void;
   onSaleComplete: (items: SaleItem[], totalAmount: number, paymentMethod: string, customerInfo: any) => void;
+  preselectedItem?: any;
 }
 
-export default function CombinedSalesModal({ patient, onClose, onSaleComplete }: CombinedSalesModalProps) {
-  const [clinicalServices] = useLocalStorage<ClinicalService[]>('clinic-clinical-services', []);
-  const [fpServices] = useLocalStorage<FamilyPlanningService[]>('clinic-fp-services', []);
+export default function CombinedSalesModal({ patient, onClose, onSaleComplete, preselectedItem }: CombinedSalesModalProps) {
+  const [clinicalServices] = useLocalStorage<ClinicalService[]>('clinic-clinical-services', [
+    {
+      id: "1",
+      name: "Random Blood Sugar (RBS)",
+      price: 300,
+      category: "diagnostics",
+      description: "Point-of-care blood glucose testing",
+      duration: 5,
+      requirements: ["Glucometer", "Test strips", "Lancets"]
+    },
+    {
+      id: "2", 
+      name: "Blood Pressure Monitoring",
+      price: 200,
+      category: "diagnostics",
+      description: "Blood pressure measurement and assessment",
+      duration: 10,
+      requirements: ["Sphygmomanometer", "Stethoscope"]
+    },
+    {
+      id: "3",
+      name: "Wound Dressing - Minor",
+      price: 400,
+      category: "procedures",
+      description: "Basic wound cleaning and dressing for minor wounds",
+      severity: "mild",
+      duration: 15,
+      requirements: ["Sterile gauze", "Antiseptic", "Medical tape"]
+    },
+    {
+      id: "4",
+      name: "Wound Dressing - Moderate",
+      price: 600,
+      category: "procedures", 
+      description: "Comprehensive wound care for moderate wounds",
+      severity: "moderate",
+      duration: 25,
+      requirements: ["Sterile gauze", "Antiseptic", "Medical tape", "Saline solution"]
+    },
+    {
+      id: "5",
+      name: "Suturing - Simple",
+      price: 800,
+      category: "procedures",
+      description: "Simple suturing for minor lacerations",
+      severity: "mild",
+      duration: 20,
+      requirements: ["Suture material", "Needle holder", "Forceps", "Local anesthetic"]
+    },
+    {
+      id: "6",
+      name: "Suturing - Complex",
+      price: 1500,
+      category: "procedures",
+      description: "Complex suturing for deep or extensive lacerations",
+      severity: "severe",
+      duration: 45,
+      requirements: ["Suture material", "Needle holder", "Forceps", "Local anesthetic", "Surgical instruments"]
+    },
+    {
+      id: "7",
+      name: "Incision & Drainage (I&D)",
+      price: 1200,
+      category: "procedures",
+      description: "Incision and drainage of abscesses",
+      severity: "moderate",
+      duration: 30,
+      requirements: ["Surgical blade", "Local anesthetic", "Drainage materials", "Antibiotics"]
+    },
+    {
+      id: "8",
+      name: "General Consultation",
+      price: 500,
+      category: "consultations",
+      description: "Comprehensive medical examination and consultation",
+      duration: 30
+    }
+  ]);
+  
+  const [fpServices] = useLocalStorage<FamilyPlanningService[]>('clinic-fp-services', [
+    {
+      id: "fp1",
+      name: "Contraceptive Implant Insertion",
+      price: 2500,
+      category: "contraceptive_implant",
+      description: "Insertion of subdermal contraceptive implant (3-year protection)",
+      duration: 20,
+      effectiveness: "99.9% effective",
+      protection: "3 years",
+      requirements: ["Contraceptive implant", "Local anesthetic", "Sterile insertion kit", "Antiseptic"]
+    },
+    {
+      id: "fp2",
+      name: "Contraceptive Implant Removal",
+      price: 1500,
+      category: "contraceptive_implant",
+      description: "Safe removal of contraceptive implant",
+      duration: 15,
+      effectiveness: "Safe removal procedure",
+      requirements: ["Local anesthetic", "Surgical instruments", "Antiseptic"]
+    },
+    {
+      id: "fp3",
+      name: "IUD Insertion - Copper T",
+      price: 3000,
+      category: "iud",
+      description: "Insertion of Copper T IUD (10-year protection)",
+      duration: 25,
+      effectiveness: "99.2% effective",
+      protection: "10 years",
+      requirements: ["Copper T IUD", "Speculum", "Tenaculum", "Uterine sound", "Antiseptic"]
+    },
+    {
+      id: "fp4",
+      name: "IUD Insertion - Hormonal (Mirena)",
+      price: 8000,
+      category: "iud",
+      description: "Insertion of hormonal IUD (5-year protection)",
+      duration: 25,
+      effectiveness: "99.8% effective",
+      protection: "5 years",
+      requirements: ["Hormonal IUD", "Speculum", "Tenaculum", "Uterine sound", "Antiseptic"]
+    },
+    {
+      id: "fp5",
+      name: "IUD Removal",
+      price: 1200,
+      category: "iud",
+      description: "Safe removal of intrauterine device",
+      duration: 15,
+      effectiveness: "Safe removal procedure",
+      requirements: ["Speculum", "IUD removal forceps", "Antiseptic"]
+    },
+    {
+      id: "fp6",
+      name: "Depo-Provera Injection",
+      price: 800,
+      category: "injection",
+      description: "3-monthly contraceptive injection",
+      duration: 10,
+      effectiveness: "99% effective",
+      protection: "3 months",
+      requirements: ["Depo-Provera injection", "Syringe", "Antiseptic"]
+    },
+    {
+      id: "fp7",
+      name: "Emergency Contraception",
+      price: 300,
+      category: "emergency",
+      description: "Emergency contraceptive pill administration and counseling",
+      duration: 10,
+      effectiveness: "85% effective within 72 hours",
+      requirements: ["Emergency contraceptive pill", "Patient education materials"]
+    },
+    {
+      id: "fp8",
+      name: "Family Planning Counseling",
+      price: 500,
+      category: "counseling",
+      description: "Comprehensive contraceptive counseling and education",
+      duration: 30,
+      effectiveness: "Informed decision making",
+      requirements: ["Educational materials", "Contraceptive samples", "Privacy"]
+    }
+  ]);
+  
   const [patients] = useLocalStorage<Patient[]>('clinic-patients', []);
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -69,6 +234,33 @@ export default function CombinedSalesModal({ patient, onClose, onSaleComplete }:
 
   // Get available medications with stock > 0
   const availableMedications = medications.filter(med => med.stock > 0);
+
+  // Add preselected item if provided
+  React.useEffect(() => {
+    if (preselectedItem && selectedItems.length === 0) {
+      const saleItem: SaleItem = {
+        id: preselectedItem.id,
+        name: preselectedItem.name,
+        price: preselectedItem.price,
+        quantity: preselectedItem.type === 'medication' ? 0.5 : 1,
+        totalCost: preselectedItem.type === 'medication' ? preselectedItem.price * 0.5 : preselectedItem.price,
+        category: preselectedItem.category || 'general',
+        description: preselectedItem.description || preselectedItem.name,
+        type: preselectedItem.type || 'medication',
+        stock: preselectedItem.stock
+      };
+      setSelectedItems([saleItem]);
+      
+      // Set appropriate tab based on item type
+      if (preselectedItem.type === 'medication') {
+        setActiveTab('medications');
+      } else if (preselectedItem.category?.includes('family_planning') || preselectedItem.category?.includes('contraceptive')) {
+        setActiveTab('family_planning');
+      } else {
+        setActiveTab('clinical');
+      }
+    }
+  }, [preselectedItem]);
 
   // Combine all items based on active tab
   const allItems = useMemo(() => {
@@ -202,14 +394,14 @@ export default function CombinedSalesModal({ patient, onClose, onSaleComplete }:
     return sum;
   }, 0);
 
-  const handlePaymentComplete = (paymentMethod: 'cash' | 'mpesa' | 'card', transactionId?: string) => {
+  const handlePaymentComplete = (paymentDetails: any) => {
     const customerInfo = {
       type: saleType,
       patientId: selectedPatient?.id,
       patientName: selectedPatient?.name || customerName || 'General Customer'
     };
 
-    onSaleComplete(selectedItems, totalAmount, paymentMethod, customerInfo);
+    onSaleComplete(selectedItems, totalAmount, paymentDetails.method, customerInfo);
     setShowPaymentModal(false);
     onClose();
   };
@@ -232,6 +424,7 @@ export default function CombinedSalesModal({ patient, onClose, onSaleComplete }:
     phone: selectedPatient?.phone,
     patientId: selectedPatient?.id
   });
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-xl max-w-7xl w-full max-h-[95vh] overflow-y-auto">
@@ -330,7 +523,7 @@ export default function CombinedSalesModal({ patient, onClose, onSaleComplete }:
                 }`}
               >
                 <Package className="h-4 w-4" />
-                <span>Medications</span>
+                <span>Medications ({availableMedications.length})</span>
               </button>
               <button
                 onClick={() => setActiveTab('clinical')}
@@ -341,7 +534,7 @@ export default function CombinedSalesModal({ patient, onClose, onSaleComplete }:
                 }`}
               >
                 <Stethoscope className="h-4 w-4" />
-                <span>Clinical Services</span>
+                <span>Clinical Services ({clinicalServices.length})</span>
               </button>
               {(!selectedPatient || selectedPatient.gender === 'female') && (
                 <button
@@ -353,7 +546,7 @@ export default function CombinedSalesModal({ patient, onClose, onSaleComplete }:
                   }`}
                 >
                   <Heart className="h-4 w-4" />
-                  <span>Family Planning</span>
+                  <span>Family Planning ({fpServices.length})</span>
                 </button>
               )}
             </div>

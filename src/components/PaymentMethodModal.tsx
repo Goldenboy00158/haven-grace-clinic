@@ -1,19 +1,37 @@
 import React, { useState } from 'react';
-import { X, CreditCard, Smartphone, DollarSign, CheckCircle } from 'lucide-react';
+import { X, CreditCard, Smartphone, DollarSign, CheckCircle, Plus, Calculator } from 'lucide-react';
+
+interface PaymentDetails {
+  method: 'cash' | 'mpesa' | 'card' | 'split';
+  amount: number;
+  transactionId?: string;
+  splitPayments?: {
+    method: 'cash' | 'mpesa' | 'card';
+    amount: number;
+    transactionId?: string;
+  }[];
+}
 
 interface PaymentMethodModalProps {
   totalAmount: number;
-  onPaymentComplete: (paymentMethod: 'cash' | 'mpesa' | 'card', transactionId?: string) => void;
+  onPaymentComplete: (paymentDetails: PaymentDetails) => void;
   onClose: () => void;
 }
 
 export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onClose }: PaymentMethodModalProps) {
-  const [selectedMethod, setSelectedMethod] = useState<'cash' | 'mpesa' | 'card'>('cash');
+  const [selectedMethod, setSelectedMethod] = useState<'cash' | 'mpesa' | 'card' | 'split'>('cash');
   const [mpesaPhone, setMpesaPhone] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [cvv, setCvv] = useState('');
   const [processing, setProcessing] = useState(false);
+  
+  // Split payment states
+  const [splitPayments, setSplitPayments] = useState([
+    { method: 'cash' as const, amount: 0, transactionId: '' },
+    { method: 'mpesa' as const, amount: 0, transactionId: '' }
+  ]);
+  const [showSplitCalculator, setShowSplitCalculator] = useState(false);
 
   const handlePayment = async () => {
     setProcessing(true);
@@ -21,15 +39,36 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
     // Simulate payment processing
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    let transactionId: string | undefined;
+    let paymentDetails: PaymentDetails;
     
-    if (selectedMethod === 'mpesa') {
-      transactionId = `MP${Date.now()}`;
-    } else if (selectedMethod === 'card') {
-      transactionId = `CD${Date.now()}`;
+    if (selectedMethod === 'split') {
+      paymentDetails = {
+        method: 'split',
+        amount: totalAmount,
+        splitPayments: splitPayments.filter(p => p.amount > 0).map(p => ({
+          ...p,
+          transactionId: p.method === 'mpesa' ? `MP${Date.now()}${Math.random().toString(36).substr(2, 4)}` :
+                        p.method === 'card' ? `CD${Date.now()}${Math.random().toString(36).substr(2, 4)}` :
+                        undefined
+        }))
+      };
+    } else {
+      let transactionId: string | undefined;
+      
+      if (selectedMethod === 'mpesa') {
+        transactionId = `MP${Date.now()}`;
+      } else if (selectedMethod === 'card') {
+        transactionId = `CD${Date.now()}`;
+      }
+      
+      paymentDetails = {
+        method: selectedMethod,
+        amount: totalAmount,
+        transactionId
+      };
     }
     
-    onPaymentComplete(selectedMethod, transactionId);
+    onPaymentComplete(paymentDetails);
     setProcessing(false);
   };
 
@@ -37,12 +76,42 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
     if (selectedMethod === 'cash') return true;
     if (selectedMethod === 'mpesa') return mpesaPhone.length >= 10;
     if (selectedMethod === 'card') return cardNumber.length >= 16 && expiryDate && cvv.length >= 3;
+    if (selectedMethod === 'split') {
+      const totalSplit = splitPayments.reduce((sum, p) => sum + p.amount, 0);
+      return Math.abs(totalSplit - totalAmount) < 0.01; // Allow for small rounding differences
+    }
     return false;
+  };
+
+  const updateSplitPayment = (index: number, field: 'method' | 'amount', value: any) => {
+    setSplitPayments(prev => prev.map((payment, i) => 
+      i === index ? { ...payment, [field]: value } : payment
+    ));
+  };
+
+  const addSplitPayment = () => {
+    setSplitPayments(prev => [...prev, { method: 'cash', amount: 0, transactionId: '' }]);
+  };
+
+  const removeSplitPayment = (index: number) => {
+    if (splitPayments.length > 1) {
+      setSplitPayments(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const calculateRemaining = () => {
+    const paid = splitPayments.reduce((sum, p) => sum + p.amount, 0);
+    return Math.max(0, totalAmount - paid);
+  };
+
+  const autoFillRemaining = (index: number) => {
+    const remaining = calculateRemaining();
+    updateSplitPayment(index, 'amount', remaining);
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl max-w-md w-full">
+      <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900">Payment Method</h3>
@@ -122,6 +191,23 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
                   </div>
                 </div>
               </button>
+
+              <button
+                onClick={() => setSelectedMethod('split')}
+                className={`w-full p-4 rounded-lg border-2 transition-colors ${
+                  selectedMethod === 'split'
+                    ? 'border-purple-500 bg-purple-50 text-purple-700'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center">
+                  <Calculator className="h-6 w-6 mr-3" />
+                  <div className="text-left">
+                    <div className="font-medium">Split Payment</div>
+                    <div className="text-sm text-gray-500">Pay using multiple methods</div>
+                  </div>
+                </div>
+              </button>
             </div>
           </div>
 
@@ -189,6 +275,109 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
               </div>
             </div>
           )}
+
+          {selectedMethod === 'split' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-gray-900">Split Payment Details</h4>
+                <div className="text-sm text-gray-600">
+                  Remaining: KES {calculateRemaining().toLocaleString()}
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                {splitPayments.map((payment, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Payment {index + 1}</span>
+                      {splitPayments.length > 1 && (
+                        <button
+                          onClick={() => removeSplitPayment(index)}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <select
+                        value={payment.method}
+                        onChange={(e) => updateSplitPayment(index, 'method', e.target.value)}
+                        className="border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="cash">Cash</option>
+                        <option value="mpesa">M-Pesa</option>
+                        <option value="card">Card</option>
+                      </select>
+                      
+                      <div className="flex items-center space-x-1">
+                        <input
+                          type="number"
+                          min="0"
+                          max={totalAmount}
+                          step="0.01"
+                          value={payment.amount}
+                          onChange={(e) => updateSplitPayment(index, 'amount', parseFloat(e.target.value) || 0)}
+                          placeholder="Amount"
+                          className="flex-1 border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <button
+                          onClick={() => autoFillRemaining(index)}
+                          className="bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-2 rounded-lg text-xs transition-colors"
+                          title="Fill remaining amount"
+                        >
+                          Auto
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {payment.method === 'mpesa' && payment.amount > 0 && (
+                      <div className="mt-2">
+                        <input
+                          type="tel"
+                          value={payment.transactionId}
+                          onChange={(e) => updateSplitPayment(index, 'transactionId', e.target.value)}
+                          placeholder="M-Pesa phone number"
+                          className="w-full px-3 py-1 border border-gray-300 rounded text-sm"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={addSplitPayment}
+                  className="bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span>Add Payment Method</span>
+                </button>
+                
+                <div className="text-sm">
+                  <span className="text-gray-600">Total Split: </span>
+                  <span className={`font-medium ${
+                    Math.abs(splitPayments.reduce((sum, p) => sum + p.amount, 0) - totalAmount) < 0.01 
+                      ? 'text-green-600' 
+                      : 'text-red-600'
+                  }`}>
+                    KES {splitPayments.reduce((sum, p) => sum + p.amount, 0).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {Math.abs(calculateRemaining()) > 0.01 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <p className="text-yellow-800 text-sm">
+                    <strong>Note:</strong> Split payments must equal the total amount (KES {totalAmount.toLocaleString()}).
+                    Current difference: KES {calculateRemaining().toLocaleString()}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="p-6 border-t bg-gray-50 rounded-b-xl">
@@ -206,7 +395,9 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
               ) : (
                 <>
                   <CheckCircle className="h-4 w-4" />
-                  <span>Complete Payment</span>
+                  <span>
+                    {selectedMethod === 'split' ? 'Complete Split Payment' : 'Complete Payment'}
+                  </span>
                 </>
               )}
             </button>

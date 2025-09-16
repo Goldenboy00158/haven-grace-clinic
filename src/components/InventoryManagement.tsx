@@ -356,6 +356,14 @@ export default function InventoryManagement({ isReviewMode = false }: InventoryM
                       <td className="py-4 px-6">
                         <div className="flex space-x-2">
                           <button 
+                            onClick={() => setShowSaleModal(medication)}
+                            disabled={medication.stock === 0}
+                            className="bg-green-100 hover:bg-green-200 text-green-600 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ShoppingCart className="h-3 w-3" />
+                            <span>Sell</span>
+                          </button>
+                          <button 
                             onClick={() => handleEditMedication(medication)}
                             className="bg-blue-100 hover:bg-blue-200 text-blue-600 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center space-x-1"
                           >
@@ -401,8 +409,9 @@ export default function InventoryManagement({ isReviewMode = false }: InventoryM
       )}
 
       {/* Combined Sale Modal */}
-      {showSaleModal && !isReviewMode && (
+      {(showSaleModal === true || (typeof showSaleModal === 'object' && showSaleModal)) && !isReviewMode && (
         <CombinedSalesModal
+          preselectedItem={typeof showSaleModal === 'object' ? showSaleModal : undefined}
           onClose={() => setShowSaleModal(false)}
           onSaleComplete={handleSaleComplete}
         />
