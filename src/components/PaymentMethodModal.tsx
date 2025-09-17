@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { X, CreditCard, Smartphone, DollarSign, CheckCircle, Plus, Calculator } from 'lucide-react';
+import { X, CreditCard, Smartphone, DollarSign, CheckCircle, Plus, Calculator, AlertTriangle } from 'lucide-react';
 
 interface PaymentDetails {
-  method: 'cash' | 'mpesa' | 'card' | 'split';
+  method: 'cash' | 'mpesa' | 'card' | 'split' | 'partial';
   amount: number;
   transactionId?: string;
   splitPayments?: {
@@ -10,6 +10,13 @@ interface PaymentDetails {
     amount: number;
     transactionId?: string;
   }[];
+  partialPayment?: {
+    amountPaid: number;
+    amountRemaining: number;
+    paymentMethod: 'cash' | 'mpesa' | 'card';
+    transactionId?: string;
+    notes?: string;
+  };
 }
 
 interface PaymentMethodModalProps {
@@ -19,7 +26,7 @@ interface PaymentMethodModalProps {
 }
 
 export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onClose }: PaymentMethodModalProps) {
-  const [selectedMethod, setSelectedMethod] = useState<'cash' | 'mpesa' | 'card' | 'split'>('cash');
+  const [selectedMethod, setSelectedMethod] = useState<'cash' | 'mpesa' | 'card' | 'split' | 'partial'>('cash');
   const [mpesaPhone, setMpesaPhone] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
@@ -31,7 +38,14 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
     { method: 'cash' as const, amount: 0, transactionId: '' },
     { method: 'mpesa' as const, amount: 0, transactionId: '' }
   ]);
-  const [showSplitCalculator, setShowSplitCalculator] = useState(false);
+
+  // Partial payment states
+  const [partialPayment, setPartialPayment] = useState({
+    amountPaid: 0,
+    paymentMethod: 'cash' as const,
+    transactionId: '',
+    notes: ''
+  });
 
   const handlePayment = async () => {
     setProcessing(true);
@@ -51,6 +65,20 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
                         p.method === 'card' ? `CD${Date.now()}${Math.random().toString(36).substr(2, 4)}` :
                         undefined
         }))
+      };
+    } else if (selectedMethod === 'partial') {
+      paymentDetails = {
+        method: 'partial',
+        amount: totalAmount,
+        partialPayment: {
+          amountPaid: partialPayment.amountPaid,
+          amountRemaining: totalAmount - partialPayment.amountPaid,
+          paymentMethod: partialPayment.paymentMethod,
+          transactionId: partialPayment.paymentMethod === 'mpesa' ? `MP${Date.now()}` :
+                        partialPayment.paymentMethod === 'card' ? `CD${Date.now()}` :
+                        undefined,
+          notes: partialPayment.notes
+        }
       };
     } else {
       let transactionId: string | undefined;
@@ -79,6 +107,9 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
     if (selectedMethod === 'split') {
       const totalSplit = splitPayments.reduce((sum, p) => sum + p.amount, 0);
       return Math.abs(totalSplit - totalAmount) < 0.01; // Allow for small rounding differences
+    }
+    if (selectedMethod === 'partial') {
+      return partialPayment.amountPaid > 0 && partialPayment.amountPaid < totalAmount;
     }
     return false;
   };
@@ -109,9 +140,13 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
     updateSplitPayment(index, 'amount', remaining);
   };
 
+  const calculatePartialRemaining = () => {
+    return Math.max(0, totalAmount - partialPayment.amountPaid);
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900">Payment Method</h3>
@@ -153,7 +188,7 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
                   <DollarSign className="h-6 w-6 mr-3" />
                   <div className="text-left">
                     <div className="font-medium">Cash Payment</div>
-                    <div className="text-sm text-gray-500">Pay with cash at counter</div>
+                    <div className="text-sm text-gray-500">Pay full amount with cash</div>
                   </div>
                 </div>
               </button>
@@ -188,6 +223,23 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
                   <div className="text-left">
                     <div className="font-medium">Credit/Debit Card</div>
                     <div className="text-sm text-gray-500">Pay with card</div>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setSelectedMethod('partial')}
+                className={`w-full p-4 rounded-lg border-2 transition-colors ${
+                  selectedMethod === 'partial'
+                    ? 'border-orange-500 bg-orange-50 text-orange-700'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center">
+                  <AlertTriangle className="h-6 w-6 mr-3" />
+                  <div className="text-left">
+                    <div className="font-medium">Partial Payment</div>
+                    <div className="text-sm text-gray-500">Pay part now, rest later</div>
                   </div>
                 </div>
               </button>
@@ -271,6 +323,107 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
                     maxLength={4}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedMethod === 'partial' && (
+            <div className="space-y-4">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <h4 className="font-medium text-orange-900 mb-2">Partial Payment Setup</h4>
+                <p className="text-sm text-orange-800">
+                  Customer will pay part of the amount now and the rest later. This creates a pending balance.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Amount to Pay Now (KES)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={totalAmount - 1}
+                    step="0.01"
+                    value={partialPayment.amountPaid}
+                    onChange={(e) => setPartialPayment(prev => ({ 
+                      ...prev, 
+                      amountPaid: parseFloat(e.target.value) || 0 
+                    }))}
+                    placeholder="Enter amount"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Method
+                  </label>
+                  <select
+                    value={partialPayment.paymentMethod}
+                    onChange={(e) => setPartialPayment(prev => ({ 
+                      ...prev, 
+                      paymentMethod: e.target.value as any 
+                    }))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="mpesa">M-Pesa</option>
+                    <option value="card">Card</option>
+                  </select>
+                </div>
+              </div>
+
+              {partialPayment.paymentMethod === 'mpesa' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    M-Pesa Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={partialPayment.transactionId}
+                    onChange={(e) => setPartialPayment(prev => ({ 
+                      ...prev, 
+                      transactionId: e.target.value 
+                    }))}
+                    placeholder="0712345678"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={partialPayment.notes}
+                  onChange={(e) => setPartialPayment(prev => ({ 
+                    ...prev, 
+                    notes: e.target.value 
+                  }))}
+                  placeholder="Reason for partial payment, when balance will be paid, etc."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  rows={3}
+                />
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Amount Paying Now:</span>
+                    <span className="ml-2 font-medium text-green-600">
+                      KES {partialPayment.amountPaid.toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Remaining Balance:</span>
+                    <span className="ml-2 font-medium text-red-600">
+                      KES {calculatePartialRemaining().toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -396,7 +549,9 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
                 <>
                   <CheckCircle className="h-4 w-4" />
                   <span>
-                    {selectedMethod === 'split' ? 'Complete Split Payment' : 'Complete Payment'}
+                    {selectedMethod === 'split' ? 'Complete Split Payment' : 
+                     selectedMethod === 'partial' ? 'Process Partial Payment' :
+                     'Complete Payment'}
                   </span>
                 </>
               )}

@@ -533,8 +533,9 @@ export default function RealTimeShareableView({ shareId }: ShareableViewProps) {
       </div>
 
       {/* Sales Modal */}
-      {showSalesModal && (
+      {(showSalesModal === true || (typeof showSalesModal === 'object' && showSalesModal)) && (
         <CombinedSalesModal
+          preselectedItem={typeof showSalesModal === 'object' ? showSalesModal : undefined}
           onClose={() => setShowSalesModal(false)}
           onSaleComplete={handleSaleComplete}
         />

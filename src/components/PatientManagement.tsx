@@ -428,7 +428,7 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
                         onClick={() => setShowPrintRecordsModal(patient)}
                         className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
                       >
-                        <Printer className="h-4 w-4" />
+                        <FileText className="h-4 w-4" />
                         <span>Print Records</span>
                       </button>
                       <button

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Edit, Trash2, Heart, Baby, Shield, Users, Pill, Save, X, Clock, Activity } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Heart, Baby, Shield, Users, Pill, Save, X, Clock, Activity, Calculator } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 
 interface FamilyPlanningService {

@@ -16,6 +16,7 @@ import EnhancedShareLinkGenerator from './components/EnhancedShareLinkGenerator'
 import QuickPrintButton from './components/QuickPrintButton';
 import MedicalDocumentGenerator from './components/MedicalDocumentGenerator';
 import QuickSaleButton from './components/QuickSaleButton';
+import TCACalculator from './components/TCACalculator';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');

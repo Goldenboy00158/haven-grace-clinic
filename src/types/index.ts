@@ -89,10 +89,22 @@ export interface Transaction {
   totalAmount: number;
   date: string;
   paymentMethod: 'cash' | 'mpesa' | 'card';
-  status: 'completed' | 'pending' | 'confirmed';
+  status: 'completed' | 'pending' | 'confirmed' | 'partial';
   paymentConfirmed?: boolean;
   confirmedBy?: string;
   confirmedAt?: string;
+  partialPayment?: {
+    amountPaid: number;
+    amountRemaining: number;
+    paymentMethod: 'cash' | 'mpesa' | 'card';
+    transactionId?: string;
+    notes?: string;
+  };
+  splitPayments?: {
+    method: 'cash' | 'mpesa' | 'card';
+    amount: number;
+    transactionId?: string;
+  }[];
 }
 
 export interface Service {

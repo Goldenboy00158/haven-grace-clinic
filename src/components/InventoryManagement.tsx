@@ -7,6 +7,7 @@ import EditMedicationModal from './EditMedicationModal';
 import AddMedicationModal from './AddMedicationModal';
 import CombinedSalesModal from './CombinedSalesModal';
 import QuickSaleButton from './QuickSaleButton';
+import MultiSelectInventory from './MultiSelectInventory';
 
 interface InventoryManagementProps {
   isReviewMode?: boolean;
@@ -29,6 +30,7 @@ export default function InventoryManagement({ isReviewMode = false }: InventoryM
   
   // Sale modal states
   const [showSaleModal, setShowSaleModal] = useState(false);
+  const [showMultiSelectModal, setShowMultiSelectModal] = useState(false);
 
   const categories = getMedicationCategories();
 
@@ -195,6 +197,13 @@ export default function InventoryManagement({ isReviewMode = false }: InventoryM
               >
                 <ShoppingCart className="h-4 w-4" />
                 <span>Combined Sale</span>
+              </button>
+              <button
+                onClick={() => setShowMultiSelectModal(true)}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+              >
+                <Package className="h-4 w-4" />
+                <span>Multi-Select Sale</span>
               </button>
               <QuickSaleButton className="bg-purple-600 hover:bg-purple-700" />
             </>
@@ -414,6 +423,18 @@ export default function InventoryManagement({ isReviewMode = false }: InventoryM
           preselectedItem={typeof showSaleModal === 'object' ? showSaleModal : undefined}
           onClose={() => setShowSaleModal(false)}
           onSaleComplete={handleSaleComplete}
+        />
+      )}
+
+      {/* Multi-Select Inventory Modal */}
+      {showMultiSelectModal && !isReviewMode && (
+        <MultiSelectInventory
+          onClose={() => setShowMultiSelectModal(false)}
+          onSaleComplete={(items) => {
+            setShowMultiSelectModal(false);
+            // Open combined sales modal with preselected items
+            setShowSaleModal(true);
+          }}
         />
       )}
     </div>
