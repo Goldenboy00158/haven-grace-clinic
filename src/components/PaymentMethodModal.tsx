@@ -239,7 +239,7 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
                   <AlertTriangle className="h-6 w-6 mr-3" />
                   <div className="text-left">
                     <div className="font-medium">Partial Payment</div>
-                    <div className="text-sm text-gray-500">Pay part now, rest later</div>
+                    <div className="text-sm text-gray-500">Pay part now, balance tracked for later</div>
                   </div>
                 </div>
               </button>
@@ -256,7 +256,7 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
                   <Calculator className="h-6 w-6 mr-3" />
                   <div className="text-left">
                     <div className="font-medium">Split Payment</div>
-                    <div className="text-sm text-gray-500">Pay using multiple methods</div>
+                    <div className="text-sm text-gray-500">Combine cash, M-Pesa, and card payments</div>
                   </div>
                 </div>
               </button>
@@ -333,7 +333,8 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                 <h4 className="font-medium text-orange-900 mb-2">Partial Payment Setup</h4>
                 <p className="text-sm text-orange-800">
-                  Customer will pay part of the amount now and the rest later. This creates a pending balance.
+                  Customer pays part now, remaining balance is tracked and can be collected later. 
+                  Transaction status will show as "Partial" until fully paid.
                 </p>
               </div>
               
@@ -424,6 +425,9 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
                       KES {calculatePartialRemaining().toLocaleString()}
                     </span>
                   </div>
+                </div>
+                <div className="mt-2 text-xs text-orange-700">
+                  <strong>Note:</strong> Remaining balance will be tracked in transaction history for future collection.
                 </div>
               </div>
             </div>
@@ -525,7 +529,8 @@ export default function PaymentMethodModal({ totalAmount, onPaymentComplete, onC
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                   <p className="text-yellow-800 text-sm">
                     <strong>Note:</strong> Split payments must equal the total amount (KES {totalAmount.toLocaleString()}).
-                    Current difference: KES {calculateRemaining().toLocaleString()}
+                    <br />Current difference: KES {calculateRemaining().toLocaleString()}
+                    <br />Use "Auto" button to fill remaining amount automatically.
                   </p>
                 </div>
               )}

@@ -248,7 +248,39 @@ export default function EnhancedPatientView({ patient, onClose, onAddRecord, onS
                     className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
                   >
                     <ShoppingCart className="h-4 w-4" />
-                    <span>Sell Items</span>
+                    <span>Quick Sale</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const event = new CustomEvent('open-patient-services', { detail: patient });
+                      window.dispatchEvent(event);
+                    }}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                  >
+                    <Stethoscope className="h-4 w-4" />
+                    <span>All Services</span>
+                  </button>
+                  {patient.gender === 'female' && (
+                    <button
+                      onClick={() => {
+                        const event = new CustomEvent('open-tca-calculator', { detail: patient });
+                        window.dispatchEvent(event);
+                      }}
+                      className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                    >
+                      <Heart className="h-4 w-4" />
+                      <span>TCA Calculator</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      const event = new CustomEvent('open-document-generator', { detail: patient });
+                      window.dispatchEvent(event);
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span>Documents</span>
                   </button>
                   <button
                     onClick={() => setShowAddRecord(true)}

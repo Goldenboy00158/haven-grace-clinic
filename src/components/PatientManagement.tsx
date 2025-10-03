@@ -422,7 +422,18 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
                         className="bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
                       >
                         <ShoppingCart className="h-4 w-4" />
-                        <span>Sell Items</span>
+                        <span>Quick Sale</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          // Open enhanced patient services modal
+                          const event = new CustomEvent('open-patient-services', { detail: patient });
+                          window.dispatchEvent(event);
+                        }}
+                        className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                      >
+                        <Stethoscope className="h-4 w-4" />
+                        <span>Services</span>
                       </button>
                       <button
                         onClick={() => setShowPrintRecordsModal(patient)}
@@ -431,6 +442,18 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
                         <FileText className="h-4 w-4" />
                         <span>Print Records</span>
                       </button>
+                      {patient.gender === 'female' && (
+                        <button
+                          onClick={() => {
+                            const event = new CustomEvent('open-tca-calculator', { detail: patient });
+                            window.dispatchEvent(event);
+                          }}
+                          className="bg-pink-100 hover:bg-pink-200 text-pink-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                        >
+                          <Heart className="h-4 w-4" />
+                          <span>TCA</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           const event = new CustomEvent('open-document-generator', { detail: patient });

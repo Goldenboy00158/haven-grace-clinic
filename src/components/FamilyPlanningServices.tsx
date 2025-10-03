@@ -311,6 +311,23 @@ export default function FamilyPlanningServices({ isReviewMode = false }: FamilyP
                       {!isReviewMode && (
                         <>
                           <button
+                            onClick={() => {
+                              const event = new CustomEvent('open-tca-calculator', { 
+                                detail: { 
+                                  preselectedMethod: service.category === 'injection' ? 'depo' : 
+                                                   service.category === 'contraceptive_implant' ? 'implant' :
+                                                   service.category === 'iud' ? 'copper_iud' : '',
+                                  administrationDate: new Date().toISOString().split('T')[0]
+                                }
+                              });
+                              window.dispatchEvent(event);
+                            }}
+                            className="text-gray-400 hover:text-pink-600 transition-colors"
+                            title="Calculate TCA"
+                          >
+                            <Heart className="h-4 w-4" />
+                          </button>
+                          <button
                             onClick={() => handleEditService(service)}
                             className="text-gray-400 hover:text-blue-600 transition-colors"
                           >

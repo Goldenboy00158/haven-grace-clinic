@@ -76,7 +76,10 @@ export default function MultiSelectInventory({ onClose, onSaleComplete }: MultiS
       stock: item.medication.stock
     }));
     
-    onSaleComplete(items);
+    // Instead of just calling onSaleComplete, open the CombinedSalesModal with preselected items
+    const event = new CustomEvent('open-combined-sale', { detail: { preselectedItems: items } });
+    window.dispatchEvent(event);
+    onClose();
   };
 
   return (

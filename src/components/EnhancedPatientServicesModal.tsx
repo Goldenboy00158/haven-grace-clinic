@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, X, ShoppingCart, Heart, Stethoscope, Activity, Users, Pill, Shield, Baby, Filter, DollarSign, Percent, CreditCard, Smartphone, Clock, CheckCircle, Package } from 'lucide-react';
+import { Search, X, ShoppingCart, Heart, Stethoscope, Activity, Users, Pill, Shield, Baby, Filter, DollarSign, Percent, CreditCard, Smartphone, Clock, CheckCircle, Package, Plus, Minus, Eye } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Patient, Transaction, Medication } from '../types';
 import { medications } from '../data/medications';
@@ -39,10 +39,10 @@ interface ServiceItem {
   originalPrice?: number;
   discountType?: 'percentage' | 'fixed';
   discountValue?: number;
-  discountReason?: string;
   category: string;
   description: string;
-  type: 'medication' | 'service';
+  type: 'medication' | 'clinical_service' | 'family_planning_service';
+  stock?: number;
 }
 
 interface EnhancedPatientServicesModalProps {
@@ -239,16 +239,14 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
     if (activeTab === 'clinical') {
       items = clinicalServices.map(service => ({
         ...service,
-        type: 'service',
-        serviceType: 'clinical'
+        type: 'clinical_service'
       }));
     } else if (activeTab === 'family_planning') {
       // Only show family planning services for female patients
       if (patient.gender === 'female') {
         items = fpServices.map(fp => ({
           ...fp,
-          type: 'service',
-          serviceType: 'family_planning'
+          type: 'family_planning_service'
         }));
       }
     } else if (activeTab === 'medications') {
@@ -325,7 +323,8 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
         totalCost: item.type === 'medication' ? item.price * 0.5 : item.price,
         category: item.category,
         description: item.description,
-        type: item.type
+        type: item.type,
+        stock: item.stock
       }]);
     }
   };
@@ -381,7 +380,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
     return sum;
   }, 0);
 
-  const handlePaymentComplete = (paymentMethod: 'cash' | 'mpesa' | 'card', transactionId?: string) => {
+  const handlePaymentComplete = (paymentDetails: any) => {
     const transaction: Transaction = {
       id: Date.now().toString(),
       type: 'patient',
@@ -400,12 +399,14 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
       })),
       totalAmount,
       date: new Date().toISOString(),
-      paymentMethod,
-      status: 'completed'
+      paymentMethod: paymentDetails.method,
+      status: paymentDetails.method === 'partial' ? 'partial' : 'completed',
+      partialPayment: paymentDetails.partialPayment,
+      splitPayments: paymentDetails.splitPayments
     };
 
     setTransactions(prev => [transaction, ...prev]);
-    onChargePatient(selectedItems, totalAmount, paymentMethod, transactionId);
+    onChargePatient(selectedItems, totalAmount, paymentDetails.method, paymentDetails.transactionId);
     setShowPaymentModal(false);
     onClose();
   };
@@ -424,9 +425,10 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
     phone: patient.phone,
     patientId: patient.id
   });
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl max-w-6xl w-full max-h-[95vh] overflow-y-auto">
+      <div className="bg-white rounded-xl max-w-7xl w-full max-h-[95vh] overflow-y-auto">
         {/* Header */}
         <div className="p-6 border-b bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-xl">
           <div className="flex items-center justify-between">
@@ -467,7 +469,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                 }`}
               >
                 <Stethoscope className="h-4 w-4" />
-                <span>Clinical Services</span>
+                <span>Clinical Services ({clinicalServices.length})</span>
               </button>
               {patient.gender === 'female' && (
                 <button
@@ -479,7 +481,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                   }`}
                 >
                   <Heart className="h-4 w-4" />
-                  <span>Family Planning</span>
+                  <span>Family Planning ({fpServices.length})</span>
                 </button>
               )}
               <button
@@ -491,7 +493,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                 }`}
               >
                 <Package className="h-4 w-4" />
-                <span>Medications</span>
+                <span>Medications ({availableMedications.length})</span>
               </button>
             </div>
           </div>
@@ -600,7 +602,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                               </div>
                             )}
                             {item.effectiveness && (
-                              <div className="text-green-600 font-medium">
+                              <div className="text-green-600 font-medium text-xs">
                                 {item.effectiveness}
                               </div>
                             )}
@@ -618,14 +620,16 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                         
                         <button
                           onClick={() => addItemToSelection(item)}
-                          disabled={isSelected}
+                          disabled={isSelected || (item.type === 'medication' && item.stock === 0)}
                           className={`ml-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                             isSelected 
                               ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                              : item.type === 'medication' && item.stock === 0
+                              ? 'bg-red-300 text-red-500 cursor-not-allowed'
                               : 'bg-blue-600 hover:bg-blue-700 text-white'
                           }`}
                         >
-                          {isSelected ? 'Added' : 'Add'}
+                          {isSelected ? 'Added' : item.type === 'medication' && item.stock === 0 ? 'Out of Stock' : 'Add'}
                         </button>
                       </div>
                     </div>
@@ -646,10 +650,13 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
               </div>
             </div>
 
-            {/* Selected Items */}
+            {/* Selected Items Cart */}
             <div className="lg:col-span-1">
-              <h4 className="font-medium text-gray-900 mb-4">Selected Items</h4>
-              <div className="bg-gray-50 rounded-lg p-4">
+              <h4 className="font-medium text-gray-900 mb-4 flex items-center">
+                <ShoppingCart className="h-5 w-5 mr-2" />
+                Cart ({selectedItems.length})
+              </h4>
+              <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
                 {selectedItems.length > 0 ? (
                   <div className="space-y-3">
                     {selectedItems.map((item) => (
@@ -669,9 +676,9 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                             <div className="flex items-center space-x-2">
                               <button
                                 onClick={() => updateItemQuantity(item.id, item.quantity - (item.type === 'medication' ? 0.5 : 1))}
-                                className="bg-gray-200 hover:bg-gray-300 text-gray-700 w-6 h-6 rounded text-xs"
+                                className="bg-gray-200 hover:bg-gray-300 text-gray-700 w-6 h-6 rounded text-xs flex items-center justify-center"
                               >
-                                -
+                                <Minus className="h-3 w-3" />
                               </button>
                               <input
                                 type="number"
@@ -683,9 +690,9 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                               />
                               <button
                                 onClick={() => updateItemQuantity(item.id, item.quantity + (item.type === 'medication' ? 0.5 : 1))}
-                                className="bg-gray-200 hover:bg-gray-300 text-gray-700 w-6 h-6 rounded text-xs"
+                                className="bg-gray-200 hover:bg-gray-300 text-gray-700 w-6 h-6 rounded text-xs flex items-center justify-center"
                               >
-                                +
+                                <Plus className="h-3 w-3" />
                               </button>
                             </div>
                             <div className="text-right">
@@ -700,18 +707,16 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                             </div>
                           </div>
                           
-                          <div className="flex space-x-1">
-                            <button
-                              onClick={() => setShowDiscountModal(item)}
-                              className="flex-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center justify-center space-x-1"
-                            >
-                              <Percent className="h-3 w-3" />
-                              <span>Discount</span>
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => setShowDiscountModal(item)}
+                            className="w-full bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center justify-center space-x-1"
+                          >
+                            <Percent className="h-3 w-3" />
+                            <span>Apply Discount</span>
+                          </button>
                           
                           {item.discountValue && (
-                            <div className="text-xs text-green-600 bg-green-50 p-1 rounded">
+                            <div className="text-xs text-green-600 bg-green-50 p-1 rounded text-center">
                               {item.discountType === 'percentage' ? `${item.discountValue}% off` : `KES ${item.discountValue} off`}
                             </div>
                           )}
@@ -737,7 +742,8 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                 ) : (
                   <div className="text-center py-8">
                     <ShoppingCart className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-500 text-sm">No items selected</p>
+                    <p className="text-gray-500 text-sm">No items in cart</p>
+                    <p className="text-gray-400 text-xs">Add items from the left panel</p>
                   </div>
                 )}
               </div>
@@ -763,8 +769,15 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
               <span>Proceed to Payment - KES {totalAmount.toLocaleString()}</span>
             </button>
             <button
+              onClick={() => setSelectedItems([])}
+              disabled={selectedItems.length === 0}
+              className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50"
+            >
+              Clear Cart
+            </button>
+            <button
               onClick={onClose}
-              className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 rounded-lg font-medium transition-colors"
+              className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors"
             >
               Cancel
             </button>
@@ -774,7 +787,14 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
         {/* Discount Modal */}
         {showDiscountModal && (
           <DiscountModal
-            item={showDiscountModal}
+            item={{
+              id: showDiscountModal.id,
+              name: showDiscountModal.name,
+              price: showDiscountModal.originalPrice || showDiscountModal.price,
+              quantity: showDiscountModal.quantity,
+              totalCost: (showDiscountModal.originalPrice || showDiscountModal.price) * showDiscountModal.quantity,
+              description: showDiscountModal.description
+            }}
             onApplyDiscount={applyDiscount}
             onClose={() => setShowDiscountModal(null)}
           />

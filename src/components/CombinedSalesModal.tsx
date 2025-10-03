@@ -50,6 +50,7 @@ interface CombinedSalesModalProps {
   onClose: () => void;
   onSaleComplete: (items: SaleItem[], totalAmount: number, paymentMethod: string, customerInfo: any) => void;
   preselectedItem?: any;
+  preselectedItems?: SaleItem[];
 }
 
 export default function CombinedSalesModal({ patient, onClose, onSaleComplete, preselectedItem }: CombinedSalesModalProps) {
@@ -258,6 +259,15 @@ export default function CombinedSalesModal({ patient, onClose, onSaleComplete, p
         setActiveTab('family_planning');
       } else {
         setActiveTab('clinical');
+      }
+    }
+    
+    // Add preselected items if provided (for multi-select)
+    if (preselectedItems && preselectedItems.length > 0 && selectedItems.length === 0) {
+      setSelectedItems(preselectedItems);
+      // Set tab based on first item type
+      if (preselectedItems[0].type === 'medication') {
+        setActiveTab('medications');
       }
     }
   }, [preselectedItem]);
