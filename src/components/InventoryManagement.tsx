@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Download, Plus, Minus, Package, AlertTriangle, TrendingUp, ShoppingCart, User, Users, Edit, Percent } from 'lucide-react';
+import { Search, Filter, Download, Plus, Minus, Package, AlertTriangle, TrendingUp, ShoppingCart, User, Users, CreditCard as Edit, Percent } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { medications, getStockStatus, getMedicationCategories } from '../data/medications';
 import { Medication, Patient, Transaction, SaleItem } from '../types';
