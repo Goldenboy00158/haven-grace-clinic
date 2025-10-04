@@ -28,6 +28,7 @@ export interface Patient {
   phone: string;
   address?: string;
   emergencyContact?: string;
+  notes?: string;
   medicalHistory: MedicalRecord[];
   gynecologicHistory?: GynecologicHistory;
   createdAt: string;

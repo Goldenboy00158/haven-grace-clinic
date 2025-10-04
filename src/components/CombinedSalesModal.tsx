@@ -338,7 +338,20 @@ export default function CombinedSalesModal({ patient, onClose, onSaleComplete, p
 
   const addItemToSelection = (item: any) => {
     const existingItem = selectedItems.find(s => s.id === item.id);
-    if (!existingItem) {
+    if (existingItem) {
+      // If item already exists, increment quantity
+      const increment = item.type === 'medication' ? 0.5 : 1;
+      setSelectedItems(prev => prev.map(s =>
+        s.id === item.id
+          ? {
+              ...s,
+              quantity: s.quantity + increment,
+              totalCost: (s.originalPrice || s.price) * (s.quantity + increment)
+            }
+          : s
+      ));
+    } else {
+      // Add new item
       setSelectedItems(prev => [...prev, {
         id: item.id,
         name: item.name,
@@ -647,16 +660,14 @@ export default function CombinedSalesModal({ patient, onClose, onSaleComplete, p
                         
                         <button
                           onClick={() => addItemToSelection(item)}
-                          disabled={isSelected || (item.type === 'medication' && item.stock === 0)}
+                          disabled={item.type === 'medication' && item.stock === 0}
                           className={`ml-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            isSelected 
-                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                              : item.type === 'medication' && item.stock === 0
+                            item.type === 'medication' && item.stock === 0
                               ? 'bg-red-300 text-red-500 cursor-not-allowed'
                               : 'bg-blue-600 hover:bg-blue-700 text-white'
                           }`}
                         >
-                          {isSelected ? 'Added' : item.type === 'medication' && item.stock === 0 ? 'Out of Stock' : 'Add'}
+                          {item.type === 'medication' && item.stock === 0 ? 'Out of Stock' : isSelected ? 'Add More' : 'Add'}
                         </button>
                       </div>
                     </div>

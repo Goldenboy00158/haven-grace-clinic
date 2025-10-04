@@ -32,6 +32,7 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
     phone: '',
     address: '',
     emergencyContact: '',
+    notes: '',
     gynecologicHistory: {
       gravida: '',
       para: '',
@@ -69,6 +70,7 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
       phone: newPatient.phone,
       address: newPatient.address,
       emergencyContact: newPatient.emergencyContact,
+      notes: newPatient.notes,
       medicalHistory: [],
       gynecologicHistory: newPatient.gender === 'female' ? newPatient.gynecologicHistory : undefined,
       createdAt: new Date().toISOString(),
@@ -88,6 +90,7 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
       phone: patient.phone,
       address: patient.address || '',
       emergencyContact: patient.emergencyContact || '',
+      notes: patient.notes || '',
       gynecologicHistory: patient.gynecologicHistory || {
         gravida: '',
         para: '',
@@ -110,6 +113,7 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
       phone: newPatient.phone,
       address: newPatient.address,
       emergencyContact: newPatient.emergencyContact,
+      notes: newPatient.notes,
       gynecologicHistory: newPatient.gender === 'female' ? newPatient.gynecologicHistory : undefined,
       updatedAt: new Date().toISOString()
     };
@@ -132,6 +136,7 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
       phone: '',
       address: '',
       emergencyContact: '',
+      notes: '',
       gynecologicHistory: {
         gravida: '',
         para: '',
@@ -578,6 +583,17 @@ export default function PatientManagement({ isReviewMode = false }: PatientManag
                   value={newPatient.emergencyContact}
                   onChange={(e) => setNewPatient(prev => ({ ...prev, emergencyContact: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea
+                  value={newPatient.notes}
+                  onChange={(e) => setNewPatient(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Additional notes about the patient"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
                 />
               </div>
 
