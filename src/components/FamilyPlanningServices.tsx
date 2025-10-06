@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Edit, Trash2, Heart, Baby, Shield, Users, Pill, Save, X, Clock, Activity } from 'lucide-react';
+import { Search, Plus, CreditCard as Edit, Trash2, Heart, Baby, Shield, Users, Pill, Save, X, Clock, Activity, Calculator } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 
 interface FamilyPlanningService {
@@ -14,7 +14,7 @@ interface FamilyPlanningService {
   requirements?: string[];
 }
 
-export default function FamilyPlanningServices() {
+export default function FamilyPlanningServices({ isReviewMode = false }: FamilyPlanningServicesProps) {
   const [services, setServices] = useLocalStorage<FamilyPlanningService[]>('clinic-fp-services', [
     {
       id: "1",
@@ -247,13 +247,15 @@ export default function FamilyPlanningServices() {
           </h2>
           <p className="text-gray-600">Comprehensive reproductive health services and contraceptive care</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Add Service</span>
-        </button>
+        {!isReviewMode && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Service</span>
+          </button>
+        )}
       </div>
 
       {/* Search and Filters */}
@@ -306,18 +308,39 @@ export default function FamilyPlanningServices() {
                       <Icon className="h-6 w-6 text-pink-600" />
                     </div>
                     <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEditService(service)}
-                        className="text-gray-400 hover:text-blue-600 transition-colors"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteService(service.id)}
-                        className="text-gray-400 hover:text-red-600 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {!isReviewMode && (
+                        <>
+                          <button
+                            onClick={() => {
+                              const event = new CustomEvent('open-tca-calculator', { 
+                                detail: { 
+                                  preselectedMethod: service.category === 'injection' ? 'depo' : 
+                                                   service.category === 'contraceptive_implant' ? 'implant' :
+                                                   service.category === 'iud' ? 'copper_iud' : '',
+                                  administrationDate: new Date().toISOString().split('T')[0]
+                                }
+                              });
+                              window.dispatchEvent(event);
+                            }}
+                            className="text-gray-400 hover:text-pink-600 transition-colors"
+                            title="Calculate TCA"
+                          >
+                            <Heart className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEditService(service)}
+                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteService(service.id)}
+                            className="text-gray-400 hover:text-red-600 transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -383,7 +406,7 @@ export default function FamilyPlanningServices() {
       )}
 
       {/* Add/Edit Service Modal */}
-      {showAddModal && (
+      {showAddModal && !isReviewMode && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-6">

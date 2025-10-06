@@ -4,10 +4,8 @@
 
 [build.environment]
   NODE_VERSION = "18"
-  VITE_API_BASE_URL = "https://api.example.com" # 🔁 Replace or add your custom environment variables
-  VITE_MPESA_CONSUMER_KEY = "your-key"          # 🔁 Optional if using env vars for Mpesa
-  VITE_MPESA_CONSUMER_SECRET = "your-secret"
-  VITE_MPESA_PASSKEY = "your-passkey"
+  VITE_SUPABASE_URL = "https://pcmjufuhqvoeyqwakskp.supabase.co"
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjbWp1ZnVocXZvZXlxd2Frc2twIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1NTQ5OTMsImV4cCI6MjA3NTEzMDk5M30.7C3_JSaSli56yLugG1xRc-LClQ-TQbeIspQFwQo1evM"
 
 [[redirects]]
   from = "/*"

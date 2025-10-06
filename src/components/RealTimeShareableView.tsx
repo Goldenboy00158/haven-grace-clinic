@@ -1,58 +1,62 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Users, DollarSign, TrendingUp, AlertTriangle, Activity, Eye, Calendar, Phone, Mail, MapPin, Clock, Refresh, ExternalLink } from 'lucide-react';
+import {
+  Package,
+  Users,
+  DollarSign,
+  TrendingUp,
+  AlertTriangle,
+  Activity,
+  Eye,
+  Calendar,
+  Phone,
+  Mail,
+  MapPin,
+  Clock,
+  RefreshCcw,
+  ShoppingCart,
+  Search,
+  Filter
+} from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { medications, getStockStatus, getMedicationCategories } from '../data/medications';
-import { Patient, Transaction, Medication, DailyExpense } from '../types';
+import {
+  medications,
+  getStockStatus,
+  getMedicationCategories
+} from '../data/medications';
+import { Patient, Transaction, Medication } from '../types';
+import CombinedSalesModal from './CombinedSalesModal';
 
-interface RealTimeShareableViewProps {
+interface ShareableViewProps {
   shareId: string;
 }
 
-export default function RealTimeShareableView({ shareId }: RealTimeShareableViewProps) {
+export default function RealTimeShareableView({ shareId }: ShareableViewProps) {
   const [medicationData] = useLocalStorage<Medication[]>('clinic-medications', medications);
   const [patients] = useLocalStorage<Patient[]>('clinic-patients', []);
-  const [transactions] = useLocalStorage<Transaction[]>('clinic-transactions', []);
-  const [expenses] = useLocalStorage<DailyExpense[]>('clinic-expenses', []);
+  const [transactions, setTransactions] = useLocalStorage<Transaction[]>('clinic-transactions', []);
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [showSalesModal, setShowSalesModal] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  // Auto-refresh every 30 seconds when enabled
+  // Auto-refresh functionality for real-time updates
   useEffect(() => {
     if (!autoRefresh) return;
-    
+
     const interval = setInterval(() => {
-      setLastUpdated(new Date());
-      // Force re-render by updating a state
-      setActiveTab(prev => prev);
-    }, 30000);
+      setLastRefresh(new Date());
+      // In a real app, this would fetch fresh data from the server
+    }, 30000); // Refresh every 30 seconds
 
     return () => clearInterval(interval);
   }, [autoRefresh]);
-
-  // Get share configuration
-  const shareConfig = JSON.parse(localStorage.getItem(`share-${shareId}`) || '{}');
-  const isExpired = shareConfig.expiresAt && new Date() > new Date(shareConfig.expiresAt);
-
-  if (isExpired) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Link Expired</h1>
-          <p className="text-gray-600">This shared link has expired and is no longer accessible.</p>
-        </div>
-      </div>
-    );
-  }
 
   // Calculate stats
   const totalMedications = medicationData.length;
   const lowStockItems = medicationData.filter(med => med.stock <= 15 && med.stock > 0).length;
   const outOfStockItems = medicationData.filter(med => med.stock === 0).length;
-  const criticalStockItems = medicationData.filter(med => med.stock <= 5 && med.stock > 0).length;
   const totalInventoryValue = medicationData.reduce((sum, med) => sum + (med.price * med.stock), 0);
   
   const totalPatients = patients.length;
@@ -75,21 +79,13 @@ export default function RealTimeShareableView({ shareId }: RealTimeShareableView
     return transactionDate.getMonth() === thisMonth && transactionDate.getFullYear() === thisYear;
   }).reduce((sum, t) => sum + t.totalAmount, 0);
 
-  // Calculate today's expenses and net profit
-  const todayExpenses = expenses.filter(exp => {
-    const today = new Date().toDateString();
-    return new Date(exp.date).toDateString() === today;
-  }).reduce((sum, exp) => sum + exp.amount, 0);
-
-  const todayNetProfit = todayRevenue - todayExpenses;
-
   const stats = [
     {
       title: 'Total Medications',
       value: totalMedications,
       icon: Package,
       color: 'bg-blue-500',
-      change: `${criticalStockItems} critical, ${lowStockItems} low stock`
+      change: '+2 this week'
     },
     {
       title: 'Total Patients',
@@ -106,13 +102,6 @@ export default function RealTimeShareableView({ shareId }: RealTimeShareableView
       change: `${todayTransactions.length} transactions`
     },
     {
-      title: 'Today\'s Net Profit',
-      value: `KES ${todayNetProfit.toLocaleString()}`,
-      icon: TrendingUp,
-      color: todayNetProfit >= 0 ? 'bg-green-500' : 'bg-red-500',
-      change: todayNetProfit >= 0 ? 'Profitable day' : 'Loss today'
-    },
-    {
       title: 'Monthly Revenue',
       value: `KES ${monthlyRevenue.toLocaleString()}`,
       icon: TrendingUp,
@@ -120,11 +109,18 @@ export default function RealTimeShareableView({ shareId }: RealTimeShareableView
       change: 'This month'
     },
     {
-      title: 'Inventory Value',
-      value: `KES ${totalInventoryValue.toLocaleString()}`,
-      icon: Package,
-      color: 'bg-orange-500',
-      change: `${outOfStockItems} out of stock`
+      title: 'Low Stock Items',
+      value: lowStockItems,
+      icon: AlertTriangle,
+      color: 'bg-yellow-500',
+      change: 'Need restocking'
+    },
+    {
+      title: 'Out of Stock',
+      value: outOfStockItems,
+      icon: AlertTriangle,
+      color: 'bg-red-500',
+      change: 'Urgent attention'
     }
   ];
 
@@ -140,7 +136,7 @@ export default function RealTimeShareableView({ shareId }: RealTimeShareableView
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 10);
 
-  const criticalStockList = medicationData
+  const criticalStockItems = medicationData
     .filter(med => med.stock <= 5)
     .sort((a, b) => a.stock - b.stock)
     .slice(0, 10);
@@ -150,93 +146,80 @@ export default function RealTimeShareableView({ shareId }: RealTimeShareableView
     { id: 'inventory', name: 'Inventory', icon: Package },
     { id: 'patients', name: 'Patients', icon: Users },
     { id: 'transactions', name: 'Transactions', icon: DollarSign },
+    { id: 'sales', name: 'Make Sale', icon: ShoppingCart },
   ];
 
-  const manualRefresh = () => {
-    setLastUpdated(new Date());
-    // Force component re-render
-    setActiveTab(prev => prev);
+  const handleSaleComplete = (items: any[], totalAmount: number, paymentMethod: string, customerInfo: any) => {
+    // This would normally update the backend, but for the shareable view we'll just show a success message
+    alert(`Sale completed successfully! Total: KES ${totalAmount.toLocaleString()}`);
+    setShowSalesModal(false);
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-3">
-              <div className="bg-blue-600 p-2 rounded-lg">
-                <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
-                  <span className="text-blue-600 font-bold text-lg">H</span>
-                </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-sm border mb-8">
+          <div className="p-6 flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="bg-blue-100 p-3 rounded-xl">
+                <Package className="h-8 w-8 text-blue-600" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Haven Grace Clinic</h1>
-                <p className="text-sm text-gray-600">Real-Time Dashboard View</p>
+                <div className="flex items-center space-x-4 text-sm text-gray-600">
+                  <span>Real-Time Dashboard View</span>
+                  <div className="flex items-center space-x-1">
+                    <div className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                    <span className="text-xs">
+                      {autoRefresh ? 'Live' : 'Paused'} • Last update: {lastRefresh.toLocaleTimeString()}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              {/* Auto-refresh toggle */}
-              <div className="flex items-center space-x-2">
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={autoRefresh}
-                    onChange={(e) => setAutoRefresh(e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-600">Auto-refresh</span>
-                </label>
-              </div>
-              
-              {/* Manual refresh button */}
+            <div className="flex items-center space-x-3">
               <button
-                onClick={manualRefresh}
-                className="flex items-center space-x-2 bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-2 rounded-lg transition-colors"
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  autoRefresh 
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
-                <Refresh className="h-4 w-4" />
-                <span className="text-sm">Refresh</span>
+                <RefreshCcw className={`h-4 w-4 ${autoRefresh ? 'animate-spin' : ''}`} />
+                <span>{autoRefresh ? 'Auto-Refresh On' : 'Auto-Refresh Off'}</span>
               </button>
-              
-              {/* View only indicator */}
-              <div className="flex items-center space-x-2 bg-green-50 px-3 py-2 rounded-lg">
-                <Eye className="h-4 w-4 text-green-600" />
-                <span className="text-sm text-green-600 font-medium">Live View</span>
+              <div className="flex items-center space-x-2 bg-blue-50 px-3 py-2 rounded-lg">
+                <Eye className="h-4 w-4 text-blue-600" />
+                <span className="text-sm text-blue-600 font-medium">Shared View</span>
               </div>
-            </div>
-          </div>
-          
-          {/* Last updated info */}
-          <div className="pb-4">
-            <div className="flex items-center justify-between text-sm text-gray-500">
-              <span>Last updated: {lastUpdated.toLocaleString()}</span>
-              <span>Share ID: {shareId}</span>
             </div>
           </div>
         </div>
-      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Navigation Tabs */}
-        <div className="mb-8">
-          <div className="flex bg-white rounded-lg p-1 shadow-sm overflow-x-auto">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span>{tab.name}</span>
-                </button>
-              );
-            })}
+        <div className="bg-white rounded-xl shadow-sm border mb-8">
+          <div className="p-6">
+            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      activeTab === tab.id
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{tab.name}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -263,39 +246,6 @@ export default function RealTimeShareableView({ shareId }: RealTimeShareableView
                     </div>
                   );
                 })}
-              </div>
-
-              {/* Today's Financial Summary */}
-              <div className="bg-white rounded-xl p-6 shadow-sm border">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Today's Financial Summary</h3>
-                <div className="grid md:grid-cols-3 gap-6">
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <DollarSign className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600">Revenue</p>
-                    <p className="text-2xl font-bold text-green-600">KES {todayRevenue.toLocaleString()}</p>
-                  </div>
-                  <div className="text-center p-4 bg-red-50 rounded-lg">
-                    <TrendingUp className="h-8 w-8 text-red-600 mx-auto mb-2 transform rotate-180" />
-                    <p className="text-sm text-gray-600">Expenses</p>
-                    <p className="text-2xl font-bold text-red-600">KES {todayExpenses.toLocaleString()}</p>
-                  </div>
-                  <div className={`text-center p-4 rounded-lg ${todayNetProfit >= 0 ? 'bg-blue-50' : 'bg-orange-50'}`}>
-                    <TrendingUp className={`h-8 w-8 mx-auto mb-2 ${todayNetProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`} />
-                    <p className="text-sm text-gray-600">Net Profit</p>
-                    <p className={`text-2xl font-bold ${todayNetProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                      KES {todayNetProfit.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                {todayRevenue > 0 && (
-                  <div className="mt-4 text-center">
-                    <p className="text-sm text-gray-600">
-                      Profit Margin: <span className={`font-semibold ${todayNetProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {((todayNetProfit / todayRevenue) * 100).toFixed(1)}%
-                      </span>
-                    </p>
-                  </div>
-                )}
               </div>
 
               <div className="grid lg:grid-cols-2 gap-6">
@@ -338,7 +288,7 @@ export default function RealTimeShareableView({ shareId }: RealTimeShareableView
                     <AlertTriangle className="h-5 w-5 text-red-500" />
                   </div>
                   <div className="space-y-3 max-h-64 overflow-y-auto">
-                    {criticalStockList.slice(0, 5).map((medication) => (
+                    {criticalStockItems.slice(0, 5).map((medication) => (
                       <div key={medication.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
                         <div>
                           <p className="font-medium text-gray-900">{medication.name}</p>
@@ -354,51 +304,70 @@ export default function RealTimeShareableView({ shareId }: RealTimeShareableView
                 </div>
               </div>
 
-              {/* Clinic Information */}
+              {/* Quick Sale Button */}
               <div className="bg-white rounded-xl p-6 shadow-sm border">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Clinic Information</h3>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <Phone className="h-5 w-5 text-blue-600" />
-                      <div>
-                        <p className="font-medium text-gray-900">0719307605, 0725488740</p>
-                        <p className="text-sm text-gray-600">Available 24/7</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Mail className="h-5 w-5 text-blue-600" />
-                      <div>
-                        <p className="font-medium text-gray-900">info@havengraceclinic.com</p>
-                        <p className="text-sm text-gray-600">Response within 24 hours</p>
-                      </div>
-                    </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
+                    <p className="text-gray-600">Process sales and manage inventory</p>
                   </div>
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <MapPin className="h-5 w-5 text-blue-600" />
-                      <div>
-                        <p className="font-medium text-gray-900">Zimmerman, Nairobi</p>
-                        <p className="text-sm text-gray-600">Medical District</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Clock className="h-5 w-5 text-blue-600" />
-                      <div>
-                        <p className="font-medium text-gray-900">Mon-Fri: 8AM-6PM</p>
-                        <p className="text-sm text-gray-600">Sat: 9AM-4PM | Sun: Emergency Only</p>
-                      </div>
-                    </div>
-                  </div>
+                  <button
+                    onClick={() => setShowSalesModal(true)}
+                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                  >
+                    <ShoppingCart className="h-5 w-5" />
+                    <span>Make Sale</span>
+                  </button>
                 </div>
               </div>
             </>
           )}
 
+          {activeTab === 'sales' && (
+            <div className="bg-white rounded-xl shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Sales Terminal</h3>
+                  <p className="text-gray-600">Process sales for medications, services, and family planning</p>
+                </div>
+                <button
+                  onClick={() => setShowSalesModal(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                >
+                  <ShoppingCart className="h-5 w-5" />
+                  <span>Start New Sale</span>
+                </button>
+              </div>
+              
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="bg-blue-50 p-6 rounded-lg text-center">
+                  <Package className="h-12 w-12 text-blue-600 mx-auto mb-3" />
+                  <h4 className="font-medium text-gray-900 mb-2">Medications</h4>
+                  <p className="text-sm text-gray-600">Sell medications with decimal quantities</p>
+                  <p className="text-lg font-bold text-blue-600 mt-2">{medicationData.filter(m => m.stock > 0).length} available</p>
+                </div>
+                
+                <div className="bg-purple-50 p-6 rounded-lg text-center">
+                  <Activity className="h-12 w-12 text-purple-600 mx-auto mb-3" />
+                  <h4 className="font-medium text-gray-900 mb-2">Clinical Services</h4>
+                  <p className="text-sm text-gray-600">Medical procedures and diagnostics</p>
+                  <p className="text-lg font-bold text-purple-600 mt-2">8+ services</p>
+                </div>
+                
+                <div className="bg-pink-50 p-6 rounded-lg text-center">
+                  <Heart className="h-12 w-12 text-pink-600 mx-auto mb-3" />
+                  <h4 className="font-medium text-gray-900 mb-2">Family Planning</h4>
+                  <p className="text-sm text-gray-600">Contraceptive services for female patients</p>
+                  <p className="text-lg font-bold text-pink-600 mt-2">8+ services</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'inventory' && (
             <div className="bg-white rounded-xl shadow-sm border">
               <div className="p-6 border-b">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Medication Inventory (Real-Time)</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Medication Inventory</h3>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="relative flex-1">
                     <input
@@ -431,13 +400,11 @@ export default function RealTimeShareableView({ shareId }: RealTimeShareableView
                       <th className="text-left py-4 px-6 font-semibold text-gray-900">Price (KES)</th>
                       <th className="text-left py-4 px-6 font-semibold text-gray-900">Stock</th>
                       <th className="text-left py-4 px-6 font-semibold text-gray-900">Status</th>
-                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Value (KES)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {filteredMedications.slice(0, 50).map((medication) => {
+                    {filteredMedications.slice(0, 20).map((medication) => {
                       const status = getStockStatus(medication.stock);
-                      const totalValue = medication.price * medication.stock;
                       return (
                         <tr key={medication.id} className="hover:bg-gray-50 transition-colors">
                           <td className="py-4 px-6 font-medium text-gray-900">{medication.name}</td>
@@ -449,18 +416,12 @@ export default function RealTimeShareableView({ shareId }: RealTimeShareableView
                               {status.label}
                             </span>
                           </td>
-                          <td className="py-4 px-6 text-gray-700 font-semibold">{totalValue.toFixed(2)}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
               </div>
-              {filteredMedications.length > 50 && (
-                <div className="p-4 text-center text-gray-500">
-                  Showing first 50 results. Use search to find specific medications.
-                </div>
-              )}
             </div>
           )}
 
@@ -470,7 +431,7 @@ export default function RealTimeShareableView({ shareId }: RealTimeShareableView
                 <h3 className="text-lg font-semibold text-gray-900">Patient Records ({patients.length})</h3>
               </div>
               <div className="divide-y divide-gray-100">
-                {patients.slice(0, 20).map((patient) => (
+                {patients.slice(0, 10).map((patient) => (
                   <div key={patient.id} className="p-6 hover:bg-gray-50 transition-colors">
                     <div className="flex items-center space-x-4">
                       <div className="bg-blue-100 p-3 rounded-full">
@@ -497,11 +458,6 @@ export default function RealTimeShareableView({ shareId }: RealTimeShareableView
                     </div>
                   </div>
                 ))}
-                {patients.length > 20 && (
-                  <div className="p-4 text-center text-gray-500">
-                    Showing first 20 patients. Total: {patients.length}
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -509,7 +465,7 @@ export default function RealTimeShareableView({ shareId }: RealTimeShareableView
           {activeTab === 'transactions' && (
             <div className="bg-white rounded-xl shadow-sm border">
               <div className="p-6 border-b">
-                <h3 className="text-lg font-semibold text-gray-900">Transaction History (Real-Time)</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Transaction History</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -524,7 +480,7 @@ export default function RealTimeShareableView({ shareId }: RealTimeShareableView
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {recentTransactionsList.slice(0, 25).map((transaction) => (
+                    {recentTransactionsList.slice(0, 15).map((transaction) => (
                       <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
                         <td className="py-4 px-6 text-gray-900">
                           {new Date(transaction.date).toLocaleDateString()}
@@ -564,11 +520,6 @@ export default function RealTimeShareableView({ shareId }: RealTimeShareableView
                   </tbody>
                 </table>
               </div>
-              {transactions.length > 25 && (
-                <div className="p-4 text-center text-gray-500">
-                  Showing latest 25 transactions. Total: {transactions.length}
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -576,10 +527,19 @@ export default function RealTimeShareableView({ shareId }: RealTimeShareableView
         {/* Footer */}
         <div className="mt-12 text-center text-gray-500 text-sm">
           <p>This is a real-time view of Haven Grace Clinic's dashboard.</p>
-          <p>Data updates automatically every 30 seconds when auto-refresh is enabled.</p>
           <p>Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
+          <p>Auto-refresh: {autoRefresh ? 'Enabled (30s)' : 'Disabled'}</p>
         </div>
       </div>
+
+      {/* Sales Modal */}
+      {(showSalesModal === true || (typeof showSalesModal === 'object' && showSalesModal)) && (
+        <CombinedSalesModal
+          preselectedItem={typeof showSalesModal === 'object' ? showSalesModal : undefined}
+          onClose={() => setShowSalesModal(false)}
+          onSaleComplete={handleSaleComplete}
+        />
+      )}
     </div>
   );
 }

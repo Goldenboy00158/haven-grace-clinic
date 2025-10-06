@@ -28,6 +28,7 @@ export interface Patient {
   phone: string;
   address?: string;
   emergencyContact?: string;
+  notes?: string;
   medicalHistory: MedicalRecord[];
   gynecologicHistory?: GynecologicHistory;
   createdAt: string;
@@ -89,10 +90,22 @@ export interface Transaction {
   totalAmount: number;
   date: string;
   paymentMethod: 'cash' | 'mpesa' | 'card';
-  status: 'completed' | 'pending' | 'confirmed';
+  status: 'completed' | 'pending' | 'confirmed' | 'partial';
   paymentConfirmed?: boolean;
   confirmedBy?: string;
   confirmedAt?: string;
+  partialPayment?: {
+    amountPaid: number;
+    amountRemaining: number;
+    paymentMethod: 'cash' | 'mpesa' | 'card';
+    transactionId?: string;
+    notes?: string;
+  };
+  splitPayments?: {
+    method: 'cash' | 'mpesa' | 'card';
+    amount: number;
+    transactionId?: string;
+  }[];
 }
 
 export interface Service {
@@ -114,6 +127,38 @@ export interface SaleItem {
   originalPrice?: number;
   discountType?: 'percentage' | 'fixed';
   discountValue?: number;
+  id?: string;
+  name?: string;
+  category?: string;
+  description?: string;
+  type?: 'medication' | 'service';
+}
+
+export interface ServiceItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  totalCost: number;
+  description: string;
+  originalPrice?: number;
+  discountType?: 'percentage' | 'fixed';
+  discountValue?: number;
+}
+
+export interface ClinicalService {
+  id: string;
+  name: string;
+  price: number;
+  category: 'general_medicine' | 'diagnostics' | 'procedures' | 'consultations' | 'family_planning';
+  description: string;
+  duration?: number;
+  requirements?: string[];
+  severity?: 'mild' | 'moderate' | 'severe';
+}
+
+export interface ServicesManagementProps {
+  isReviewMode?: boolean;
 }
 
 export interface AppSettings {

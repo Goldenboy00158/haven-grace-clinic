@@ -14,12 +14,22 @@ import AnalyticsDashboard from './components/AnalyticsDashboard';
 import ReviewModeToggle from './components/ReviewModeToggle';
 import EnhancedShareLinkGenerator from './components/EnhancedShareLinkGenerator';
 import QuickPrintButton from './components/QuickPrintButton';
+import MedicalDocumentGenerator from './components/MedicalDocumentGenerator';
+import QuickSaleButton from './components/QuickSaleButton';
+import TCACalculator from './components/TCACalculator';
+import EnhancedPatientServicesModal from './components/EnhancedPatientServicesModal';
+import CombinedSalesModal from './components/CombinedSalesModal';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isReviewMode, setIsReviewMode] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showDocumentGenerator, setShowDocumentGenerator] = useState(false);
+  const [documentPatient, setDocumentPatient] = useState<any>(null);
+  const [showPatientServices, setShowPatientServices] = useState<any>(null);
+  const [showTCACalculator, setShowTCACalculator] = useState<any>(null);
+  const [showCombinedSale, setShowCombinedSale] = useState<any>(null);
 
   // Check if this is a shared view
   const urlPath = window.location.pathname;
@@ -44,6 +54,24 @@ function App() {
     };
   }, []);
 
+  // Listen for document generator events
+  useEffect(() => {
+    const handleOpenDocumentGenerator = (event: CustomEvent) => {
+      setDocumentPatient(event.detail || null);
+      setShowDocumentGenerator(true);
+    };
+
+    const handleOpenCombinedSale = (event: CustomEvent) => {
+      setShowCombinedSale(event.detail || null);
+    };
+
+    window.addEventListener('open-document-generator', handleOpenDocumentGenerator as EventListener);
+    window.addEventListener('open-combined-sale', handleOpenCombinedSale as EventListener);
+    return () => {
+      window.removeEventListener('open-document-generator', handleOpenDocumentGenerator as EventListener);
+      window.removeEventListener('open-combined-sale', handleOpenCombinedSale as EventListener);
+    };
+  }, []);
   const tabs = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
     { id: 'inventory', name: 'Inventory', icon: Package },
@@ -225,9 +253,39 @@ function App() {
         context={getContextForPrint()}
       />
 
+      {/* Floating Quick Sale Button */}
+      <QuickSaleButton variant="fab" />
+
       {/* Enhanced Share Modal */}
       {showShareModal && (
         <EnhancedShareLinkGenerator onClose={() => setShowShareModal(false)} />
+      )}
+
+      {/* Medical Document Generator */}
+      {showDocumentGenerator && (
+        <MedicalDocumentGenerator 
+          onClose={() => {
+            setShowDocumentGenerator(false);
+            setDocumentPatient(null);
+          }}
+          preselectedMethod={showTCACalculator?.preselectedMethod}
+          administrationDate={showTCACalculator?.administrationDate}
+          patient={showTCACalculator?.patient}
+          preselectedPatient={documentPatient}
+        />
+      )}
+
+      {/* Combined Sale Modal */}
+      {showCombinedSale && (
+        <CombinedSalesModal
+          onClose={() => setShowCombinedSale(null)}
+          onSaleComplete={(items, totalAmount, paymentMethod, customerInfo) => {
+            // Handle sale completion
+            console.log('Sale completed:', { items, totalAmount, paymentMethod, customerInfo });
+            setShowCombinedSale(null);
+          }}
+          preselectedItems={showCombinedSale?.preselectedItems}
+        />
       )}
     </div>
   );

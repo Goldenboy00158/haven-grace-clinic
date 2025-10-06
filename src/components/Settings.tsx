@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings as SettingsIcon, Save, Download, Upload, Trash2, RefreshCw, Package, Users, DollarSign, TrendingUp, Activity } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Download, Upload, Trash2, RefreshCw, Package, Users, DollarSign, TrendingUp, Activity, AlertTriangle } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { AppSettings } from '../types';
 
@@ -23,10 +23,43 @@ export default function Settings({ isReviewMode = false }: SettingsProps) {
 
   const [tempSettings, setTempSettings] = useState(settings);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
+  const [showClearDataModal, setShowClearDataModal] = useState(false);
+  const [clearDataType, setClearDataType] = useState<'all' | 'patients' | 'transactions' | 'expenses' | 'medications'>('all');
 
   const handleSave = () => {
     setSettings(tempSettings);
     alert('Settings saved successfully!');
+  };
+
+  const clearData = () => {
+    switch (clearDataType) {
+      case 'all':
+        localStorage.removeItem('clinic-patients');
+        localStorage.removeItem('clinic-transactions');
+        localStorage.removeItem('clinic-expenses');
+        localStorage.removeItem('clinic-medications');
+        localStorage.removeItem('clinic-clinical-services');
+        localStorage.removeItem('clinic-fp-services');
+        alert('All data cleared successfully! Please refresh the page.');
+        break;
+      case 'patients':
+        localStorage.removeItem('clinic-patients');
+        alert('Patient data cleared successfully! Please refresh the page.');
+        break;
+      case 'transactions':
+        localStorage.removeItem('clinic-transactions');
+        alert('Transaction data cleared successfully! Please refresh the page.');
+        break;
+      case 'expenses':
+        localStorage.removeItem('clinic-expenses');
+        alert('Expense data cleared successfully! Please refresh the page.');
+        break;
+      case 'medications':
+        localStorage.removeItem('clinic-medications');
+        alert('Medication data cleared successfully! Please refresh the page.');
+        break;
+    }
+    setShowClearDataModal(false);
   };
 
   const handleReset = () => {
@@ -126,6 +159,15 @@ export default function Settings({ isReviewMode = false }: SettingsProps) {
                 className="hidden"
               />
             </label>
+          )}
+          {!isReviewMode && (
+            <button
+              onClick={() => setShowClearDataModal(true)}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>Clear Data</span>
+            </button>
           )}
         </div>
       </div>
@@ -335,6 +377,52 @@ export default function Settings({ isReviewMode = false }: SettingsProps) {
         </div>
       )}
 
+      {/* Clear Data Modal */}
+      {showClearDataModal && !isReviewMode && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <AlertTriangle className="h-5 w-5 mr-2 text-red-600" />
+                Clear Data
+              </h3>
+              <button
+                onClick={() => setShowClearDataModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-gray-600">
+                Select what data you want to clear. This action cannot be undone.
+              </p>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Data Type to Clear
+                </label>
+                <select
+                  value={clearDataType}
+                  onChange={(e) => setClearDataType(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">All Data (Complete Reset)</option>
+                  <option value="patients">Patient Records Only</option>
+                  <option value="transactions">Transaction History Only</option>
+                  <option value="expenses">Daily Expenses Only</option>
+                  <option value="medications">Medication Inventory Only</option>
+                </select>
+              </div>
+
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-red-800 text-sm">
+                  <strong>Warning:</strong> This will permanently delete the selected data. 
+                  Make sure to export your data first if you need a backup.
+                </p>
+              </div>
+            </div>
       {/* Confirm Reset Modal */}
       {showConfirmReset && !isReviewMode && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -352,6 +440,23 @@ export default function Settings({ isReviewMode = false }: SettingsProps) {
               </button>
               <button
                 onClick={() => setShowConfirmReset(false)}
+                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 rounded-lg font-medium transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+            <div className="flex space-x-3 pt-6">
+              <button
+                onClick={clearData}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-medium transition-colors"
+              >
+                Clear {clearDataType === 'all' ? 'All Data' : clearDataType.charAt(0).toUpperCase() + clearDataType.slice(1)}
+              </button>
+              <button
+                onClick={() => setShowClearDataModal(false)}
                 className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 rounded-lg font-medium transition-colors"
               >
                 Cancel

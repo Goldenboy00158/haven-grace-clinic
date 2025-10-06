@@ -4,6 +4,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { medications } from '../data/medications';
 import { Patient, Transaction, Medication, DailyExpense } from '../types';
 import QuickPrintButton from './QuickPrintButton';
+import QuickSaleButton from './QuickSaleButton';
 
 interface DashboardProps {
   onNavigate?: (tab: string) => void;
@@ -293,7 +294,7 @@ export default function Dashboard({ onNavigate, isReviewMode, onShowShare }: Das
           <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
           <QuickPrintButton variant="icon" />
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           <button 
             onClick={() => onNavigate?.('inventory')}
             className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg text-center transition-colors"
@@ -301,6 +302,9 @@ export default function Dashboard({ onNavigate, isReviewMode, onShowShare }: Das
             <Package className="h-8 w-8 text-blue-600 mx-auto mb-2" />
             <p className="text-sm font-medium text-blue-600">Manage Inventory</p>
           </button>
+          <div className="p-4 bg-green-50 hover:bg-green-100 rounded-lg text-center transition-colors">
+            <QuickSaleButton variant="card" className="w-full" />
+          </div>
           <button 
             onClick={() => onNavigate?.('patients')}
             className="p-4 bg-green-50 hover:bg-green-100 rounded-lg text-center transition-colors"

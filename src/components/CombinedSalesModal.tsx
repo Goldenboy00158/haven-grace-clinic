@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, X, ShoppingCart, Heart, Stethoscope, Activity, Users, Pill, Shield, Baby, Filter, DollarSign, Percent, CreditCard, Smartphone, Clock, CheckCircle, Package, Plus, Minus, Eye } from 'lucide-react';
+import { Search, X, ShoppingCart, Package, Stethoscope, Heart, Users, DollarSign, Percent, CreditCard, Plus, Minus, Filter, Eye } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Patient, Transaction, Medication } from '../types';
 import { medications } from '../data/medications';
@@ -30,7 +30,7 @@ interface FamilyPlanningService {
   requirements?: string[];
 }
 
-interface ServiceItem {
+interface SaleItem {
   id: string;
   name: string;
   price: number;
@@ -45,13 +45,15 @@ interface ServiceItem {
   stock?: number;
 }
 
-interface EnhancedPatientServicesModalProps {
-  patient: Patient;
+interface CombinedSalesModalProps {
+  patient?: Patient;
   onClose: () => void;
-  onChargePatient: (services: any[], totalAmount: number, paymentMethod: string, transactionId?: string) => void;
+  onSaleComplete: (items: SaleItem[], totalAmount: number, paymentMethod: string, customerInfo: any) => void;
+  preselectedItem?: any;
+  preselectedItems?: SaleItem[];
 }
 
-export default function EnhancedPatientServicesModal({ patient, onClose, onChargePatient }: EnhancedPatientServicesModalProps) {
+export default function CombinedSalesModal({ patient, onClose, onSaleComplete, preselectedItem, preselectedItems }: CombinedSalesModalProps) {
   const [clinicalServices] = useLocalStorage<ClinicalService[]>('clinic-clinical-services', [
     {
       id: "1",
@@ -218,47 +220,85 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
     }
   ]);
   
-  const [transactions, setTransactions] = useLocalStorage<Transaction[]>('clinic-transactions', []);
+  const [patients] = useLocalStorage<Patient[]>('clinic-patients', []);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedItems, setSelectedItems] = useState<ServiceItem[]>([]);
-  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
-  const [showDiscountModal, setShowDiscountModal] = useState<ServiceItem | null>(null);
+  const [activeTab, setActiveTab] = useState<'medications' | 'clinical' | 'family_planning'>('medications');
+  const [selectedItems, setSelectedItems] = useState<SaleItem[]>([]);
+  const [saleType, setSaleType] = useState<'general' | 'patient'>(patient ? 'patient' : 'general');
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(patient || null);
+  const [customerName, setCustomerName] = useState('');
+  const [showDiscountModal, setShowDiscountModal] = useState<SaleItem | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'clinical' | 'family_planning' | 'medications'>('clinical');
 
   // Get available medications with stock > 0
   const availableMedications = medications.filter(med => med.stock > 0);
+
+  // Add preselected item if provided
+  React.useEffect(() => {
+    if (preselectedItem && selectedItems.length === 0) {
+      const saleItem: SaleItem = {
+        id: preselectedItem.id,
+        name: preselectedItem.name,
+        price: preselectedItem.price,
+        quantity: preselectedItem.type === 'medication' ? 0.5 : 1,
+        totalCost: preselectedItem.type === 'medication' ? preselectedItem.price * 0.5 : preselectedItem.price,
+        category: preselectedItem.category || 'general',
+        description: preselectedItem.description || preselectedItem.name,
+        type: preselectedItem.type || 'medication',
+        stock: preselectedItem.stock
+      };
+      setSelectedItems([saleItem]);
+      
+      // Set appropriate tab based on item type
+      if (preselectedItem.type === 'medication') {
+        setActiveTab('medications');
+      } else if (preselectedItem.category?.includes('family_planning') || preselectedItem.category?.includes('contraceptive')) {
+        setActiveTab('family_planning');
+      } else {
+        setActiveTab('clinical');
+      }
+    }
+    
+    // Add preselected items if provided (for multi-select)
+    if (preselectedItems && preselectedItems.length > 0 && selectedItems.length === 0) {
+      setSelectedItems(preselectedItems);
+      // Set tab based on first item type
+      if (preselectedItems[0].type === 'medication') {
+        setActiveTab('medications');
+      }
+    }
+  }, [preselectedItem]);
 
   // Combine all items based on active tab
   const allItems = useMemo(() => {
     let items: any[] = [];
     
-    if (activeTab === 'clinical') {
-      items = clinicalServices.map(service => ({
-        ...service,
-        type: 'clinical_service'
-      }));
-    } else if (activeTab === 'family_planning') {
-      // Only show family planning services for female patients
-      if (patient.gender === 'female') {
-        items = fpServices.map(fp => ({
-          ...fp,
-          type: 'family_planning_service'
-        }));
-      }
-    } else if (activeTab === 'medications') {
+    if (activeTab === 'medications') {
       items = availableMedications.map(med => ({
         ...med,
         type: 'medication',
         category: med.category || 'medications'
       }));
+    } else if (activeTab === 'clinical') {
+      items = clinicalServices.map(service => ({
+        ...service,
+        type: 'clinical_service'
+      }));
+    } else if (activeTab === 'family_planning') {
+      // Only show family planning services for female patients or general sales
+      if (!selectedPatient || selectedPatient.gender === 'female') {
+        items = fpServices.map(fp => ({
+          ...fp,
+          type: 'family_planning_service'
+        }));
+      }
     }
     
     return items;
-  }, [clinicalServices, fpServices, availableMedications, patient.gender, activeTab]);
+  }, [availableMedications, clinicalServices, fpServices, selectedPatient, activeTab]);
 
   // Get unique categories for current tab
   const categories = useMemo(() => {
@@ -272,29 +312,14 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            item.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = !selectedCategory || item.category === selectedCategory;
-      
-      let matchesPrice = true;
-      if (priceRange.min && item.price < parseFloat(priceRange.min)) matchesPrice = false;
-      if (priceRange.max && item.price > parseFloat(priceRange.max)) matchesPrice = false;
-      
-      return matchesSearch && matchesCategory && matchesPrice;
+      return matchesSearch && matchesCategory;
     });
-  }, [allItems, searchTerm, selectedCategory, priceRange]);
+  }, [allItems, searchTerm, selectedCategory]);
 
   const getItemIcon = (item: any) => {
     if (item.type === 'medication') return Package;
-    
-    switch (item.category) {
-      case 'contraceptive_implant': return Shield;
-      case 'iud': return Heart;
-      case 'injection': return Activity;
-      case 'emergency': return Pill;
-      case 'counseling': return Users;
-      case 'diagnostics': return Activity;
-      case 'procedures': return Stethoscope;
-      case 'consultations': return Users;
-      default: return Stethoscope;
-    }
+    if (item.type === 'family_planning_service') return Heart;
+    return Stethoscope;
   };
 
   const getCategoryColor = (category: string) => {
@@ -307,14 +332,26 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
       case 'diagnostics': return 'bg-blue-100 text-blue-800';
       case 'procedures': return 'bg-purple-100 text-purple-800';
       case 'consultations': return 'bg-green-100 text-green-800';
-      case 'medications': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const addItemToSelection = (item: any) => {
     const existingItem = selectedItems.find(s => s.id === item.id);
-    if (!existingItem) {
+    if (existingItem) {
+      // If item already exists, increment quantity
+      const increment = item.type === 'medication' ? 0.5 : 1;
+      setSelectedItems(prev => prev.map(s =>
+        s.id === item.id
+          ? {
+              ...s,
+              quantity: s.quantity + increment,
+              totalCost: (s.originalPrice || s.price) * (s.quantity + increment)
+            }
+          : s
+      ));
+    } else {
+      // Add new item
       setSelectedItems(prev => [...prev, {
         id: item.id,
         name: item.name,
@@ -381,32 +418,13 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
   }, 0);
 
   const handlePaymentComplete = (paymentDetails: any) => {
-    const transaction: Transaction = {
-      id: Date.now().toString(),
-      type: 'patient',
-      patientId: patient.id,
-      patientName: patient.name,
-      items: selectedItems.map(item => ({
-        medicationId: item.id,
-        medicationName: item.name,
-        quantity: item.quantity,
-        dosage: '',
-        frequency: '',
-        duration: 0,
-        instructions: item.description,
-        price: item.price,
-        totalCost: item.totalCost
-      })),
-      totalAmount,
-      date: new Date().toISOString(),
-      paymentMethod: paymentDetails.method,
-      status: paymentDetails.method === 'partial' ? 'partial' : 'completed',
-      partialPayment: paymentDetails.partialPayment,
-      splitPayments: paymentDetails.splitPayments
+    const customerInfo = {
+      type: saleType,
+      patientId: selectedPatient?.id,
+      patientName: selectedPatient?.name || customerName || 'General Customer'
     };
 
-    setTransactions(prev => [transaction, ...prev]);
-    onChargePatient(selectedItems, totalAmount, paymentDetails.method, paymentDetails.transactionId);
+    onSaleComplete(selectedItems, totalAmount, paymentDetails.method, customerInfo);
     setShowPaymentModal(false);
     onClose();
   };
@@ -416,14 +434,18 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
       alert('Please add items to cart first');
       return;
     }
+    if (saleType === 'patient' && !selectedPatient) {
+      alert('Please select a patient first');
+      return;
+    }
     setShowPreviewModal(true);
   };
 
   const getCustomerInfo = () => ({
-    type: 'patient' as const,
-    name: patient.name,
-    phone: patient.phone,
-    patientId: patient.id
+    type: saleType,
+    name: selectedPatient?.name || customerName || 'General Customer',
+    phone: selectedPatient?.phone,
+    patientId: selectedPatient?.id
   });
 
   return (
@@ -434,18 +456,11 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-xl font-semibold">
-                Complete Services & Medications for {patient.name}
+                Complete Sales - Services & Medications
               </h3>
-              <div className="flex items-center space-x-4 text-blue-100 text-sm mt-1">
-                <span>Age: {patient.age}</span>
-                <span>Gender: {patient.gender}</span>
-                {patient.gender === 'female' && (
-                  <span className="bg-pink-500 px-2 py-1 rounded-full text-xs">
-                    <Heart className="h-3 w-3 inline mr-1" />
-                    Family Planning Available
-                  </span>
-                )}
-              </div>
+              <p className="text-blue-100 text-sm mt-1">
+                {patient ? `For patient: ${patient.name}` : 'General sale or select patient'}
+              </p>
             </div>
             <button
               onClick={onClose}
@@ -457,9 +472,82 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
         </div>
 
         <div className="p-6">
-          {/* Service Type Tabs */}
+          {/* Customer Selection */}
+          {!patient && (
+            <div className="mb-6 bg-gray-50 rounded-lg p-4">
+              <div className="flex space-x-4 mb-4">
+                <button
+                  onClick={() => setSaleType('general')}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    saleType === 'general' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  <Users className="h-4 w-4" />
+                  <span>General Sale</span>
+                </button>
+                <button
+                  onClick={() => setSaleType('patient')}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    saleType === 'patient' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  <Users className="h-4 w-4" />
+                  <span>Patient Sale</span>
+                </button>
+              </div>
+
+              {saleType === 'patient' ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Patient</label>
+                  <select
+                    value={selectedPatient?.id || ''}
+                    onChange={(e) => {
+                      const patient = patients.find(p => p.id === e.target.value);
+                      setSelectedPatient(patient || null);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select a patient</option>
+                    {patients.map(patient => (
+                      <option key={patient.id} value={patient.id}>
+                        {patient.name} - {patient.phone} ({patient.gender}, {patient.age}y)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Customer Name (Optional)</label>
+                  <input
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Enter customer name"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Item Type Tabs */}
           <div className="mb-6">
             <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setActiveTab('medications')}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors flex-1 justify-center ${
+                  activeTab === 'medications'
+                    ? 'bg-orange-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-orange-600'
+                }`}
+              >
+                <Package className="h-4 w-4" />
+                <span>Medications ({availableMedications.length})</span>
+              </button>
               <button
                 onClick={() => setActiveTab('clinical')}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors flex-1 justify-center ${
@@ -471,7 +559,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                 <Stethoscope className="h-4 w-4" />
                 <span>Clinical Services ({clinicalServices.length})</span>
               </button>
-              {patient.gender === 'female' && (
+              {(!selectedPatient || selectedPatient.gender === 'female') && (
                 <button
                   onClick={() => setActiveTab('family_planning')}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors flex-1 justify-center ${
@@ -484,76 +572,38 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                   <span>Family Planning ({fpServices.length})</span>
                 </button>
               )}
-              <button
-                onClick={() => setActiveTab('medications')}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors flex-1 justify-center ${
-                  activeTab === 'medications'
-                    ? 'bg-orange-600 text-white shadow-md'
-                    : 'text-gray-600 hover:text-orange-600'
-                }`}
-              >
-                <Package className="h-4 w-4" />
-                <span>Medications ({availableMedications.length})</span>
-              </button>
             </div>
           </div>
 
           {/* Search and Filters */}
-          <div className="mb-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder={`Search ${activeTab === 'medications' ? 'medications' : 'services'}...`}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
-                />
-              </div>
-              
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Categories</option>
-                {categories.map(category => (
-                  <option key={category} value={category}>
-                    {category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                  </option>
-                ))}
-              </select>
-
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
-                type="number"
-                placeholder="Min Price (KES)"
-                value={priceRange.min}
-                onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
-                className="border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-
-              <input
-                type="number"
-                placeholder="Max Price (KES)"
-                value={priceRange.max}
-                onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
-                className="border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                type="text"
+                placeholder={`Search ${activeTab}...`}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
               />
             </div>
+            
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Categories</option>
+              {categories.map(category => (
+                <option key={category} value={category}>
+                  {category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </option>
+              ))}
+            </select>
 
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <span>Found {filteredItems.length} {activeTab === 'medications' ? 'medications' : 'services'}</span>
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setSelectedCategory('');
-                  setPriceRange({ min: '', max: '' });
-                }}
-                className="text-blue-600 hover:text-blue-800"
-              >
-                Clear filters
-              </button>
+            <div className="text-sm text-gray-600 flex items-center">
+              <Filter className="h-4 w-4 mr-2" />
+              Found {filteredItems.length} items
             </div>
           </div>
 
@@ -597,7 +647,6 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                             </div>
                             {item.duration && (
                               <div className="flex items-center">
-                                <Clock className="h-4 w-4 mr-1" />
                                 <span>{item.duration} min</span>
                               </div>
                             )}
@@ -607,29 +656,18 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                               </div>
                             )}
                           </div>
-
-                          {item.requirements && item.requirements.length > 0 && (
-                            <div className="mt-2">
-                              <p className="text-xs text-gray-500">
-                                Requirements: {item.requirements.slice(0, 2).join(', ')}
-                                {item.requirements.length > 2 && '...'}
-                              </p>
-                            </div>
-                          )}
                         </div>
                         
                         <button
                           onClick={() => addItemToSelection(item)}
-                          disabled={isSelected || (item.type === 'medication' && item.stock === 0)}
+                          disabled={item.type === 'medication' && item.stock === 0}
                           className={`ml-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            isSelected 
-                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                              : item.type === 'medication' && item.stock === 0
+                            item.type === 'medication' && item.stock === 0
                               ? 'bg-red-300 text-red-500 cursor-not-allowed'
                               : 'bg-blue-600 hover:bg-blue-700 text-white'
                           }`}
                         >
-                          {isSelected ? 'Added' : item.type === 'medication' && item.stock === 0 ? 'Out of Stock' : 'Add'}
+                          {item.type === 'medication' && item.stock === 0 ? 'Out of Stock' : isSelected ? 'Add More' : 'Add'}
                         </button>
                       </div>
                     </div>
@@ -638,11 +676,11 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
                 
                 {filteredItems.length === 0 && (
                   <div className="text-center py-8">
-                    <Stethoscope className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500">
-                      {patient.gender !== 'female' && activeTab === 'family_planning' 
+                      {selectedPatient?.gender !== 'female' && activeTab === 'family_planning' 
                         ? 'Family planning services are only available for female patients.'
-                        : `No ${activeTab === 'medications' ? 'medications' : 'services'} found matching your criteria.`
+                        : `No ${activeTab} found matching your criteria.`
                       }
                     </p>
                   </div>
@@ -754,7 +792,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
           <div className="flex space-x-3 pt-6 border-t mt-6">
             <button
               onClick={handleShowPreview}
-              disabled={selectedItems.length === 0}
+              disabled={selectedItems.length === 0 || (saleType === 'patient' && !selectedPatient)}
               className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
               <Eye className="h-4 w-4" />
@@ -762,7 +800,7 @@ export default function EnhancedPatientServicesModal({ patient, onClose, onCharg
             </button>
             <button
               onClick={() => setShowPaymentModal(true)}
-              disabled={selectedItems.length === 0}
+              disabled={selectedItems.length === 0 || (saleType === 'patient' && !selectedPatient)}
               className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
               <CreditCard className="h-4 w-4" />
