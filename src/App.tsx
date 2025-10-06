@@ -18,6 +18,7 @@ import MedicalDocumentGenerator from './components/MedicalDocumentGenerator';
 import QuickSaleButton from './components/QuickSaleButton';
 import TCACalculator from './components/TCACalculator';
 import EnhancedPatientServicesModal from './components/EnhancedPatientServicesModal';
+import CombinedSalesModal from './components/CombinedSalesModal';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -68,9 +69,9 @@ function App() {
     window.addEventListener('open-combined-sale', handleOpenCombinedSale as EventListener);
     return () => {
       window.removeEventListener('open-document-generator', handleOpenDocumentGenerator as EventListener);
+      window.removeEventListener('open-combined-sale', handleOpenCombinedSale as EventListener);
     };
   }, []);
-      window.removeEventListener('open-combined-sale', handleOpenCombinedSale as EventListener);
   const tabs = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
     { id: 'inventory', name: 'Inventory', icon: Package },
