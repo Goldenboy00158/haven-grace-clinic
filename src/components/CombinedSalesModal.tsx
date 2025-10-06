@@ -53,7 +53,7 @@ interface CombinedSalesModalProps {
   preselectedItems?: SaleItem[];
 }
 
-export default function CombinedSalesModal({ patient, onClose, onSaleComplete, preselectedItem }: CombinedSalesModalProps) {
+export default function CombinedSalesModal({ patient, onClose, onSaleComplete, preselectedItem, preselectedItems }: CombinedSalesModalProps) {
   const [clinicalServices] = useLocalStorage<ClinicalService[]>('clinic-clinical-services', [
     {
       id: "1",
