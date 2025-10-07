@@ -1,15 +1,17 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Download, DollarSign, Calendar, User, Package, CheckCircle, Clock } from 'lucide-react';
+import { Search, Filter, Download, DollarSign, Calendar, User, Package, CheckCircle, Clock, Undo2, AlertTriangle } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { Transaction, Patient } from '../types';
+import { Transaction, Patient, Medication } from '../types';
 
 export default function TransactionHistory({ isReviewMode = false }: TransactionHistoryProps) {
   const [transactions, setTransactions] = useLocalStorage<Transaction[]>('clinic-transactions', []);
   const [patients] = useLocalStorage<Patient[]>('clinic-patients', []);
+  const [medications, setMedications] = useLocalStorage<Medication[]>('clinic-medications', []);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'patient' | 'general'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending' | 'confirmed'>('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [showUndoConfirm, setShowUndoConfirm] = useState<string | null>(null);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(transaction => {
@@ -49,10 +51,10 @@ export default function TransactionHistory({ isReviewMode = false }: Transaction
   }, [filteredTransactions]);
 
   const confirmPayment = (transactionId: string) => {
-    setTransactions(prev => prev.map(transaction => 
-      transaction.id === transactionId 
-        ? { 
-            ...transaction, 
+    setTransactions(prev => prev.map(transaction =>
+      transaction.id === transactionId
+        ? {
+            ...transaction,
             status: 'confirmed',
             paymentConfirmed: true,
             confirmedBy: 'Admin', // In a real app, this would be the current user
@@ -60,6 +62,37 @@ export default function TransactionHistory({ isReviewMode = false }: Transaction
           }
         : transaction
     ));
+  };
+
+  const undoTransaction = (transactionId: string) => {
+    const transaction = transactions.find(t => t.id === transactionId);
+    if (!transaction) return;
+
+    // Restore inventory stock
+    setMedications(prevMedications => {
+      return prevMedications.map(med => {
+        const transactionItem = transaction.items.find(item => item.medicationId === med.id);
+        if (transactionItem) {
+          return {
+            ...med,
+            stock: med.stock + transactionItem.quantity
+          };
+        }
+        return med;
+      });
+    });
+
+    // Remove the transaction
+    setTransactions(prev => prev.filter(t => t.id !== transactionId));
+    setShowUndoConfirm(null);
+  };
+
+  // Check if transaction can be undone (within last 24 hours)
+  const canUndoTransaction = (transaction: Transaction) => {
+    const transactionDate = new Date(transaction.date);
+    const now = new Date();
+    const hoursSinceTransaction = (now.getTime() - transactionDate.getTime()) / (1000 * 60 * 60);
+    return hoursSinceTransaction <= 24; // Can only undo within 24 hours
   };
 
   const exportData = () => {
@@ -268,21 +301,32 @@ export default function TransactionHistory({ isReviewMode = false }: Transaction
                     )}
                   </td>
                   <td className="py-4 px-6">
-                    {!isReviewMode && transaction.status === 'completed' && !transaction.paymentConfirmed && (
-                      <button
-                        onClick={() => confirmPayment(transaction.id)}
-                        className="bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center space-x-1"
-                      >
-                        <CheckCircle className="h-3 w-3" />
-                        <span>Confirm Payment</span>
-                      </button>
-                    )}
-                    {transaction.status === 'confirmed' && (
-                      <span className="text-green-600 text-sm font-medium">✓ Confirmed</span>
-                    )}
-                    {isReviewMode && (
-                      <span className="text-gray-500 text-sm">View Only</span>
-                    )}
+                    <div className="flex flex-col space-y-2">
+                      {!isReviewMode && transaction.status === 'completed' && !transaction.paymentConfirmed && (
+                        <button
+                          onClick={() => confirmPayment(transaction.id)}
+                          className="bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center space-x-1"
+                        >
+                          <CheckCircle className="h-3 w-3" />
+                          <span>Confirm Payment</span>
+                        </button>
+                      )}
+                      {!isReviewMode && canUndoTransaction(transaction) && (
+                        <button
+                          onClick={() => setShowUndoConfirm(transaction.id)}
+                          className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center space-x-1"
+                        >
+                          <Undo2 className="h-3 w-3" />
+                          <span>Undo</span>
+                        </button>
+                      )}
+                      {transaction.status === 'confirmed' && (
+                        <span className="text-green-600 text-sm font-medium">✓ Confirmed</span>
+                      )}
+                      {isReviewMode && (
+                        <span className="text-gray-500 text-sm">View Only</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -297,6 +341,47 @@ export default function TransactionHistory({ isReviewMode = false }: Transaction
           </div>
         )}
       </div>
+
+      {/* Undo Confirmation Modal */}
+      {showUndoConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="bg-red-100 p-3 rounded-full">
+                <AlertTriangle className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Undo Transaction</h3>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-gray-700 mb-4">
+                Are you sure you want to undo this transaction? This will:
+              </p>
+              <ul className="list-disc list-inside space-y-2 text-sm text-gray-600">
+                <li>Remove the transaction from the records</li>
+                <li>Restore the inventory stock for all items</li>
+                <li>This action cannot be reversed</li>
+              </ul>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowUndoConfirm(null)}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => undoTransaction(showUndoConfirm)}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+              >
+                <Undo2 className="h-4 w-4" />
+                <span>Undo Transaction</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
