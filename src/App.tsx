@@ -19,6 +19,7 @@ import QuickSaleButton from './components/QuickSaleButton';
 import TCACalculator from './components/TCACalculator';
 import EnhancedPatientServicesModal from './components/EnhancedPatientServicesModal';
 import CombinedSalesModal from './components/CombinedSalesModal';
+import EnhancedInvoicePrinter from './components/EnhancedInvoicePrinter';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -30,6 +31,7 @@ function App() {
   const [showPatientServices, setShowPatientServices] = useState<any>(null);
   const [showTCACalculator, setShowTCACalculator] = useState<any>(null);
   const [showCombinedSale, setShowCombinedSale] = useState<any>(null);
+  const [showInvoicePrinter, setShowInvoicePrinter] = useState(false);
 
   // Check if this is a shared view
   const urlPath = window.location.pathname;
@@ -146,16 +148,26 @@ function App() {
             </div>
 
             <div className="flex items-center space-x-4">
+              {/* Invoice Printer Button */}
+              <button
+                onClick={() => setShowInvoicePrinter(true)}
+                className="hidden md:flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition-colors"
+                title="Print Invoice/Receipt"
+              >
+                <FileText className="h-4 w-4" />
+                <span className="text-sm font-medium">Print Invoice</span>
+              </button>
+
               {/* Print Button */}
-              <QuickPrintButton 
-                variant="icon" 
+              <QuickPrintButton
+                variant="icon"
                 context={getContextForPrint()}
                 className="hidden md:block"
               />
 
               {/* Review Mode Toggle */}
-              <ReviewModeToggle 
-                isReviewMode={isReviewMode} 
+              <ReviewModeToggle
+                isReviewMode={isReviewMode}
                 onToggle={() => setIsReviewMode(!isReviewMode)}
                 className="hidden md:flex"
               />
@@ -285,6 +297,13 @@ function App() {
             setShowCombinedSale(null);
           }}
           preselectedItems={showCombinedSale?.preselectedItems}
+        />
+      )}
+
+      {/* Enhanced Invoice Printer */}
+      {showInvoicePrinter && (
+        <EnhancedInvoicePrinter
+          onClose={() => setShowInvoicePrinter(false)}
         />
       )}
     </div>
