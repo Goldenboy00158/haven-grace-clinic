@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Download, DollarSign, Calendar, User, Package, CheckCircle, Clock, Undo2, AlertTriangle } from 'lucide-react';
+import { Search, Filter, Download, DollarSign, Calendar, User, Package, CheckCircle, Clock, Undo2, AlertTriangle, Printer } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Transaction, Patient, Medication } from '../types';
+import EnhancedInvoicePrinter from './EnhancedInvoicePrinter';
 
 export default function TransactionHistory({ isReviewMode = false }: TransactionHistoryProps) {
   const [transactions, setTransactions] = useLocalStorage<Transaction[]>('clinic-transactions', []);
@@ -12,6 +13,8 @@ export default function TransactionHistory({ isReviewMode = false }: Transaction
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending' | 'confirmed'>('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [showUndoConfirm, setShowUndoConfirm] = useState<string | null>(null);
+  const [showInvoicePrinter, setShowInvoicePrinter] = useState(false);
+  const [selectedTransactionForPrint, setSelectedTransactionForPrint] = useState<Transaction | null>(null);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(transaction => {
@@ -302,6 +305,18 @@ export default function TransactionHistory({ isReviewMode = false }: Transaction
                   </td>
                   <td className="py-4 px-6">
                     <div className="flex flex-col space-y-2">
+                      {/* Print Invoice/Receipt Button */}
+                      <button
+                        onClick={() => {
+                          setSelectedTransactionForPrint(transaction);
+                          setShowInvoicePrinter(true);
+                        }}
+                        className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center space-x-1"
+                      >
+                        <Printer className="h-3 w-3" />
+                        <span>Print</span>
+                      </button>
+
                       {!isReviewMode && transaction.status === 'completed' && !transaction.paymentConfirmed && (
                         <button
                           onClick={() => confirmPayment(transaction.id)}
@@ -381,6 +396,17 @@ export default function TransactionHistory({ isReviewMode = false }: Transaction
             </div>
           </div>
         </div>
+      )}
+
+      {/* Enhanced Invoice Printer */}
+      {showInvoicePrinter && (
+        <EnhancedInvoicePrinter
+          onClose={() => {
+            setShowInvoicePrinter(false);
+            setSelectedTransactionForPrint(null);
+          }}
+          preselectedTransaction={selectedTransactionForPrint || undefined}
+        />
       )}
     </div>
   );
